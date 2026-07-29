@@ -19,6 +19,7 @@ export type Armor = {
   defense: number;
   icon: string;
   image: string;
+  mpBonus?: number;
 };
 
 export type SkillKind =
@@ -55,8 +56,10 @@ export type GameItem = {
 
 export const SKILL_LIMIT = 2;
 export const ITEM_LIMIT = 3;
+export const DEFAULT_ITEM_IDS = ["ruby_crystal", "sapphire_crystal"] as const;
+export const BATTLE_ITEM_LIMIT = ITEM_LIMIT + DEFAULT_ITEM_IDS.length;
 export const BASE_MAX_MP = 100;
-export const STAFF_MAX_MP = 300;
+export const STAFF_MAX_MP = 200;
 
 export const WEAPONS: Weapon[] = [
   {
@@ -78,7 +81,7 @@ export const WEAPONS: Weapon[] = [
   {
     id: "oakstaff",
     name: "古樫の杖",
-    description: "最大MPが300になり、吸引を使用できる。",
+    description: "基礎最大MPが200になり、吸引を使用できる。",
     damage: 12,
     type: "staff",
     healingBonus: 8,
@@ -106,10 +109,11 @@ export const ARMORS: Armor[] = [
   {
     id: "runedcloak",
     name: "ルーンの外套",
-    description: "魔力をまとった軽い外套。ダメージを1軽減。",
+    description: "最大MPを100増加し、受けるダメージを1軽減。",
     defense: 1,
     icon: "◇",
     image: "/icons/armor-rune-cloak.png",
+    mpBonus: 100,
   },
 ];
 
@@ -142,11 +146,12 @@ export const SKILLS: Skill[] = [
   {
     id: "golden_arrow",
     name: "黄金の光矢",
-    description: "MP60で指定した敵に攻40。弓装備時のみ。",
+    description:
+      "MP35で指定した敵に攻45。エメラルドの結晶の倍率が適用される。弓装備時のみ。",
     cooldown: 0,
     icon: "☀",
     kind: "magic",
-    mpCost: 60,
+    mpCost: 35,
     requiredWeaponType: "bow",
   },
   {
@@ -221,7 +226,8 @@ export const ITEMS: GameItem[] = [
   {
     id: "emerald_crystal",
     name: "エメラルドの結晶",
-    description: "所持中、通常攻撃が1個につき15%増加。重複可。",
+    description:
+      "所持中、通常攻撃と黄金の光矢が1個につき25%増加。重複可。",
     kind: "passive",
     image: "/icons/item-emerald-crystal.png",
   },
@@ -239,6 +245,12 @@ export const weaponById = (id: string) =>
   WEAPONS.find((item) => item.id === id);
 export const armorById = (id: string) =>
   ARMORS.find((item) => item.id === id);
+export const maxMpForLoadout = (weaponId: string, armorId: string) => {
+  const weapon = weaponById(weaponId);
+  const armor = armorById(armorId);
+  const baseMp = weapon?.type === "staff" ? STAFF_MAX_MP : BASE_MAX_MP;
+  return baseMp + (armor?.mpBonus ?? 0);
+};
 export const skillById = (id: string) =>
   SKILLS.find((item) => item.id === id);
 export const itemById = (id: string) =>

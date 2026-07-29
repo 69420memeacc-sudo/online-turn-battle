@@ -1,14 +1,15 @@
 import { env } from "cloudflare:workers";
 import {
   ARMORS,
-  BASE_MAX_MP,
+  BATTLE_ITEM_LIMIT,
+  DEFAULT_ITEM_IDS,
   ITEMS,
   ITEM_LIMIT,
   SKILL_LIMIT,
-  STAFF_MAX_MP,
   WEAPONS,
   armorById,
   itemById,
+  maxMpForLoadout,
   skillById,
   weaponById,
   type ActionLog,
@@ -640,7 +641,8 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
-      const maxMp = weapon.type === "staff" ? STAFF_MAX_MP : BASE_MAX_MP;
+      const maxMp = maxMpForLoadout(weaponId, armorId);
+      const startingItems = [...DEFAULT_ITEM_IDS, ...itemIds];
       await db
         .prepare(
           "UPDATE players SET weapon_id = ?, armor_id = ?, skill_ids = ?, item_ids = ?, loadout_item_ids = ?, mp = ?, max_mp = ?, ready = 1 WHERE id = ?",
@@ -649,7 +651,7 @@ export async function POST(request: Request) {
           weaponId,
           armorId,
           JSON.stringify(skillIds),
-          JSON.stringify(itemIds),
+          JSON.stringify(startingItems),
           JSON.stringify(itemIds),
           maxMp,
           maxMp,
@@ -695,15 +697,17 @@ export async function POST(request: Request) {
         );
       }
       const statements: D1PreparedStatement[] = result.results.map((player) => {
-        const maxMp =
-          weaponById(player.weapon_id)?.type === "staff"
-            ? STAFF_MAX_MP
-            : BASE_MAX_MP;
+        const maxMp = maxMpForLoadout(player.weapon_id, player.armor_id);
+        const savedItems = parseJson<string[]>(
+          player.loadout_item_ids,
+          parseJson<string[]>(player.item_ids, []),
+        );
+        const startingItems = [...DEFAULT_ITEM_IDS, ...savedItems];
         return db
           .prepare(
-            "UPDATE players SET hp = max_hp, mp = ?, max_mp = ?, barrier = 0, cooldowns = '{}', sleep_turns = 0 WHERE id = ?",
+            "UPDATE players SET hp = max_hp, mp = ?, max_mp = ?, barrier = 0, item_ids = ?, cooldowns = '{}', sleep_turns = 0 WHERE id = ?",
           )
-          .bind(maxMp, maxMp, player.id);
+          .bind(maxMp, maxMp, JSON.stringify(startingItems), player.id);
       });
       statements.push(
         db
@@ -750,20 +754,18 @@ export async function POST(request: Request) {
         db.prepare("DELETE FROM actions WHERE room_id = ?").bind(room.id),
       ];
       for (const player of result.results) {
-        const maxMp =
-          weaponById(player.weapon_id)?.type === "staff"
-            ? STAFF_MAX_MP
-            : BASE_MAX_MP;
+        const maxMp = maxMpForLoadout(player.weapon_id, player.armor_id);
         const savedItems = parseJson<string[]>(
           player.loadout_item_ids,
           parseJson<string[]>(player.item_ids, []),
         );
+        const startingItems = [...DEFAULT_ITEM_IDS, ...savedItems];
         statements.push(
           db
             .prepare(
               "UPDATE players SET hp = max_hp, mp = ?, max_mp = ?, barrier = 0, item_ids = ?, cooldowns = '{}', sleep_turns = 0, ready = 1 WHERE id = ?",
             )
-            .bind(maxMp, maxMp, JSON.stringify(savedItems), player.id),
+            .bind(maxMp, maxMp, JSON.stringify(startingItems), player.id),
         );
       }
       statements.push(
@@ -922,7 +924,7 @@ export async function POST(request: Request) {
             { status: 400 },
           );
         }
-        if (active.itemList.length >= ITEM_LIMIT) {
+        if (active.itemList.length >= BATTLE_ITEM_LIMIT) {
           return Response.json(
             { error: "アイテム枠に空きがありません。" },
             { status: 400 },
@@ -977,11 +979,11 @@ export async function POST(request: Request) {
         }
         let rawDamage =
           actionId === "power_strike" ? weapon.damage + 10 : weapon.damage;
-        if (actionId === "golden_arrow") rawDamage = 40;
-        if (isBasic) {
+        if (actionId === "golden_arrow") rawDamage = 45;
+        if (isBasic || actionId === "golden_arrow") {
           rawDamage = Math.floor(
             rawDamage *
-              1.15 ** countItem(active.itemList, "emerald_crystal"),
+              1.25 ** countItem(active.itemList, "emerald_crystal"),
           );
         }
         const resultDamage = damagePlayer(target, rawDamage);

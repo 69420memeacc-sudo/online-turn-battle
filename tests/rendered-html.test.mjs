@@ -17,7 +17,7 @@ test("ships the Crown & Claw entrance and online game flow", async () => {
   assert.match(page, /新しい戦場を作る/);
   assert.match(page, /持ち込み装備/);
   assert.match(page, /スキルと魔法を2つまで/);
-  assert.match(page, /アイテムを3つまで/);
+  assert.match(page, /追加アイテムを3つまで/);
   assert.match(page, /試合を開始/);
   assert.match(layout, /オンライン・ターン制バトル/);
   assert.match(route, /operation === "create"/);
@@ -35,6 +35,15 @@ test("ships the Crown & Claw entrance and online game flow", async () => {
   assert.match(route, /randomIndex\(target\.itemList\.length\)/);
   assert.match(route, /target\.itemList\.splice\(stolenIndex, 1\)/);
   assert.match(game, /MP15で自身のHPを22回復/);
+  assert.match(game, /STAFF_MAX_MP = 200/);
+  assert.match(game, /最大MPを100増加/);
+  assert.match(game, /MP35で指定した敵に攻45/);
+  assert.match(game, /1個につき25%増加/);
+  assert.match(route, /1\.25 \*\* countItem/);
+  assert.match(route, /\[\.\.\.DEFAULT_ITEM_IDS, \.\.\.itemIds\]/);
+  assert.match(page, /各1個を標準支給/);
+  assert.match(page, /battle-message-popup/);
+  assert.doesNotMatch(page, /BATTLE LOG/);
   assert.match(page, /同じ編成で再戦/);
   assert.match(page, /装備するには.*武器が必要/);
 });

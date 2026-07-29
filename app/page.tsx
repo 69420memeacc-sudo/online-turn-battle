@@ -2,9 +2,10 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ARMORS,
+  BATTLE_ITEM_LIMIT,
   ITEMS,
   ITEM_LIMIT,
   SKILLS,
@@ -12,8 +13,10 @@ import {
   WEAPONS,
   armorById,
   itemById,
+  maxMpForLoadout,
   skillById,
   weaponById,
+  type ActionLog,
   type PublicPlayer,
   type PublicRoom,
   type Team,
@@ -131,6 +134,9 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [battleMessages, setBattleMessages] = useState<ActionLog[]>([]);
+  const seenActionIds = useRef(new Set<string>());
+  const seenRoomCode = useRef<string | null>(null);
 
   const requestGame = useCallback(async (body: Record<string, unknown>) => {
     setBusy(true);
@@ -218,6 +224,33 @@ export default function Home() {
     }, 4000);
     return () => window.clearInterval(timer);
   }, [session]);
+
+  useEffect(() => {
+    if (!room) return;
+    if (seenRoomCode.current !== room.code) {
+      seenRoomCode.current = room.code;
+      seenActionIds.current = new Set(
+        room.actions.map((action) => action.id),
+      );
+      setBattleMessages([]);
+      return;
+    }
+    const unseenActions = room.actions.filter(
+      (action) => !seenActionIds.current.has(action.id),
+    );
+    if (!unseenActions.length) return;
+    unseenActions.forEach((action) => seenActionIds.current.add(action.id));
+    setBattleMessages((current) => [...current, ...unseenActions]);
+  }, [room]);
+
+  const battleMessage = battleMessages[0];
+  useEffect(() => {
+    if (!battleMessage) return;
+    const timer = window.setTimeout(() => {
+      setBattleMessages((current) => current.slice(1));
+    }, 3000);
+    return () => window.clearTimeout(timer);
+  }, [battleMessage]);
 
   useEffect(() => {
     if (!session) return;
@@ -411,6 +444,17 @@ export default function Home() {
 
   return (
     <main className="game-shell">
+      {battleMessage ? (
+        <div
+          className="battle-message-popup"
+          role="status"
+          aria-live="assertive"
+          key={battleMessage.id}
+        >
+          <small>TURN {battleMessage.turnNumber}</small>
+          <strong>{battleMessage.message}</strong>
+        </div>
+      ) : null}
       <header className="game-header">
         <button className="brand" onClick={leaveRoom} aria-label="タイトルへ戻る">
           <span className="brand-crown">♛</span>
@@ -539,7 +583,9 @@ export default function Home() {
             <div>
               <p className="eyebrow">WAR ROOM / {room.code}</p>
               <h1>出陣準備</h1>
-              <p>武器1・防具1・技2・アイテム3で編成します。</p>
+              <p>
+                武器1・防具1・技2・追加アイテム3で編成します。ルビーとサファイアは1個ずつ標準支給。
+              </p>
             </div>
             <div className="room-code-box">
               <small>招待コード</small>
@@ -585,7 +631,7 @@ export default function Home() {
                       </span>
                       <span className="item-stat">
                         攻 {weapon.damage}
-                        <i>{weapon.type === "staff" ? "MP 300" : "MP 100"}</i>
+                        <i>MP {maxMpForLoadout(weapon.id, armorId)}</i>
                       </span>
                     </button>
                   ))}
@@ -618,7 +664,10 @@ export default function Home() {
                         <b>{armor.name}</b>
                         <small>{armor.description}</small>
                       </span>
-                      <span className="item-stat">防 {armor.defense}</span>
+                      <span className="item-stat">
+                        防 {armor.defense}
+                        {armor.mpBonus ? <i>MP +{armor.mpBonus}</i> : null}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -668,8 +717,11 @@ export default function Home() {
 
               <div className="loadout-group">
                 <h3>
-                  <span>04</span> アイテムを3つまで
+                  <span>04</span> 追加アイテムを3つまで
                 </h3>
+                <p className="loadout-note">
+                  ルビーの結晶とサファイアの結晶は、選択した3枠とは別に各1個を標準支給します。
+                </p>
                 <div className="item-grid item-picker-grid">
                   {ITEMS.map((item) => {
                     const count = countOf(itemIds, item.id);
@@ -915,7 +967,8 @@ export default function Home() {
                   const insufficientMp = (skill.mpCost ?? 0) > self.mp;
                   const insufficientHp = (skill.hpCost ?? 0) >= self.hp;
                   const noItemSpace =
-                    skill.kind === "steal" && self.itemIds.length >= ITEM_LIMIT;
+                    skill.kind === "steal" &&
+                    self.itemIds.length >= BATTLE_ITEM_LIMIT;
                   return (
                     <button
                       key={skill.id}
@@ -996,24 +1049,6 @@ export default function Home() {
                 )}
               </div>
             </div>
-            <aside className="battle-log">
-              <div className="log-heading">
-                <span>BATTLE LOG</span>
-                <b>戦況記録</b>
-              </div>
-              <div className="log-list">
-                {room.actions.length ? (
-                  [...room.actions].reverse().map((action) => (
-                    <p key={action.id}>
-                      <small>TURN {action.turnNumber}</small>
-                      {action.message}
-                    </p>
-                  ))
-                ) : (
-                  <p className="log-empty">開戦の鐘が鳴りました。</p>
-                )}
-              </div>
-            </aside>
           </div>
 
           {room.status === "finished" ? (

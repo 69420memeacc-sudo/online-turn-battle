@@ -1036,15 +1036,67 @@ select:focus-visible {
 }
 
 .battle-console {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 330px;
-  gap: 18px;
+  display: block;
   margin-top: 18px;
 }
 
 .action-panel,
 .battle-log {
   padding: 22px;
+}
+
+.battle-message-popup {
+  position: fixed;
+  z-index: 100;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: min(720px, calc(100vw - 36px));
+  min-height: 150px;
+  place-content: center;
+  gap: 14px;
+  padding: 30px 42px;
+  border: 1px solid rgba(231, 196, 116, 0.8);
+  background:
+    linear-gradient(135deg, rgba(119, 86, 32, 0.24), transparent 52%),
+    rgba(12, 13, 12, 0.96);
+  box-shadow:
+    0 30px 100px rgba(0, 0, 0, 0.72),
+    inset 0 0 46px rgba(199, 166, 100, 0.08);
+  text-align: center;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: battle-message-in 3s ease both;
+}
+
+.battle-message-popup small {
+  color: var(--gold);
+  font: 700 11px/1 Arial, sans-serif;
+  letter-spacing: 0.24em;
+}
+
+.battle-message-popup strong {
+  color: #f3ead5;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-size: clamp(20px, 3vw, 34px);
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+@keyframes battle-message-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -44%) scale(0.94);
+  }
+  12%,
+  82% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -54%) scale(0.98);
+  }
 }
 
 .target-select {
@@ -1426,6 +1478,11 @@ footer {
 
   .action-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .battle-message-popup {
+    min-height: 130px;
+    padding: 24px 20px;
   }
 
   .victory-banner {
