@@ -49,6 +49,7 @@ export const players = sqliteTable(
     cooldowns: text("cooldowns").notNull().default("{}"),
     sleepTurns: integer("sleep_turns").notNull().default(0),
     ready: integer("ready").notNull().default(0),
+    lastSeenAt: text("last_seen_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     joinedAt: text("joined_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => [index("players_room_idx").on(table.roomId, table.joinedAt)],

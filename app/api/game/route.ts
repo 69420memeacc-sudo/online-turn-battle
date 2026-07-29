@@ -48,6 +48,7 @@ type PlayerRow = {
   cooldowns: string;
   sleep_turns: number;
   ready: number;
+  last_seen_at: string;
   joined_at: string;
 };
 
@@ -112,6 +113,7 @@ async function ensureSchema(db: D1Database) {
         cooldowns TEXT NOT NULL DEFAULT '{}',
         sleep_turns INTEGER NOT NULL DEFAULT 0,
         ready INTEGER NOT NULL DEFAULT 0,
+        last_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (room_id) REFERENCES rooms(id)
       )
@@ -149,6 +151,7 @@ async function ensureSchema(db: D1Database) {
     ["item_ids", "TEXT NOT NULL DEFAULT '[]'"],
     ["loadout_item_ids", "TEXT NOT NULL DEFAULT '[]'"],
     ["sleep_turns", "INTEGER NOT NULL DEFAULT 0"],
+    ["last_seen_at", "TEXT NOT NULL DEFAULT '1970-01-01 00:00:00'"],
   ] as const;
   for (const [name, definition] of additions) {
     if (!columns.has(name)) {
@@ -158,6 +161,11 @@ async function ensureSchema(db: D1Database) {
           .prepare(
             "UPDATE players SET loadout_item_ids = item_ids WHERE item_ids != '[]'",
           )
+          .run();
+      }
+      if (name === "last_seen_at") {
+        await db
+          .prepare("UPDATE players SET last_seen_at = CURRENT_TIMESTAMP")
           .run();
       }
     }
@@ -192,12 +200,91 @@ function publicPlayer(row: PlayerRow): PublicPlayer {
   };
 }
 
+async function expireDisconnectedPlayers(
+  db: D1Database,
+  room: RoomRow,
+): Promise<boolean> {
+  if (room.status !== "battle") return false;
+  const playersResult = await db
+    .prepare(
+      "SELECT * FROM players WHERE room_id = ? ORDER BY joined_at ASC, id ASC",
+    )
+    .bind(room.id)
+    .all<PlayerRow>();
+  const staleIdsResult = await db
+    .prepare(
+      "SELECT id FROM players WHERE room_id = ? AND hp > 0 AND datetime(last_seen_at) < datetime('now', '-15 seconds')",
+    )
+    .bind(room.id)
+    .all<{ id: string }>();
+  const staleIds = new Set(staleIdsResult.results.map((player) => player.id));
+  if (!staleIds.size) return false;
+
+  const living = playersResult.results.filter(
+    (player) => player.hp > 0 && !staleIds.has(player.id),
+  );
+  const humansAlive = living.filter((player) => player.team === "humans");
+  const monstersAlive = living.filter((player) => player.team === "monsters");
+  const current = playersResult.results.find(
+    (player) => player.id === room.current_player_id,
+  );
+  let status: RoomRow["status"] = "battle";
+  let winner: Team | null = null;
+  let nextPlayerId = room.current_player_id;
+  let nextTurnNumber = room.turn_number;
+
+  if (!humansAlive.length || !monstersAlive.length) {
+    status = "finished";
+    winner = humansAlive.length
+      ? "humans"
+      : monstersAlive.length
+        ? "monsters"
+        : current?.team === "humans"
+          ? "monsters"
+          : "humans";
+    nextPlayerId = null;
+  } else if (room.current_player_id && staleIds.has(room.current_player_id)) {
+    const nextTeam: Team =
+      current?.team === "humans" ? "monsters" : "humans";
+    const candidates = nextTeam === "humans" ? humansAlive : monstersAlive;
+    const cursor =
+      nextTeam === "humans" ? room.human_cursor : room.monster_cursor;
+    nextPlayerId = candidates[cursor % candidates.length].id;
+    nextTurnNumber += 1;
+  }
+
+  const statements: D1PreparedStatement[] = [...staleIds].map((id) =>
+    db.prepare("UPDATE players SET hp = 0 WHERE id = ?").bind(id),
+  );
+  statements.push(
+    db
+      .prepare(
+        "UPDATE rooms SET status = ?, current_player_id = ?, turn_number = ?, winner_team = ?, version = version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'battle'",
+      )
+      .bind(
+        status,
+        nextPlayerId,
+        nextTurnNumber,
+        winner,
+        room.id,
+      ),
+  );
+  await db.batch(statements);
+  return true;
+}
+
 async function getRoomState(db: D1Database, code: string): Promise<PublicRoom> {
-  const room = await db
+  let room = await db
     .prepare("SELECT * FROM rooms WHERE code = ?")
     .bind(code)
     .first<RoomRow>();
   if (!room) throw new Response("部屋が見つかりません。", { status: 404 });
+  if (await expireDisconnectedPlayers(db, room)) {
+    room = (await db
+      .prepare("SELECT * FROM rooms WHERE id = ?")
+      .bind(room.id)
+      .first<RoomRow>())!;
+  }
 
   const [playersResult, actionsResult] = await Promise.all([
     db
@@ -491,6 +578,14 @@ export async function POST(request: Request) {
     const playerId = String(body.playerId ?? "");
     const token = String(body.token ?? "");
     const actor = await authenticate(db, room.id, playerId, token);
+    await db
+      .prepare("UPDATE players SET last_seen_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .bind(actor.id)
+      .run();
+
+    if (operation === "heartbeat") {
+      return Response.json({ ok: true });
+    }
 
     if (operation === "loadout") {
       if (room.status !== "lobby") {

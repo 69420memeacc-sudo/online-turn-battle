@@ -199,6 +199,26 @@ export default function Home() {
     return () => window.clearInterval(timer);
   }, [refreshRoom, session]);
 
+  useEffect(() => {
+    if (!session) return;
+    const heartbeat = () =>
+      fetch("/api/game", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          operation: "heartbeat",
+          code: session.code,
+          playerId: session.playerId,
+          token: session.token,
+        }),
+      }).catch(() => undefined);
+    void heartbeat();
+    const timer = window.setInterval(() => {
+      void heartbeat();
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [session]);
+
   const self = room?.players.find((player) => player.id === session?.playerId);
   const humans = room?.players.filter((player) => player.team === "humans") ?? [];
   const monsters =
