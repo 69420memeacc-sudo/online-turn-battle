@@ -1,7 +1,8 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 import {
   ARMORS,
   ITEMS,
@@ -98,7 +99,7 @@ function PlayerCard({
         <div className="passive-row">
           {passives.map((item, index) => (
             <span key={`${item!.id}-${index}`} title={item!.name}>
-              <Image src={item!.image} alt="" width={16} height={16} />
+              <img src={item!.image} alt="" width={16} height={16} />
               {item!.name}
             </span>
           ))}
@@ -526,7 +527,7 @@ export default function Home() {
                       }
                       onClick={() => setArmorId(armor.id)}
                     >
-                      <Image
+                      <img
                         className="generated-icon"
                         src={armor.image}
                         alt={armor.name}
@@ -602,7 +603,7 @@ export default function Home() {
                           count ? "selected" : ""
                         }`}
                       >
-                        <Image
+                        <img
                           className="generated-icon"
                           src={item.image}
                           alt={item.name}
@@ -897,7 +898,7 @@ export default function Home() {
                           )
                         }
                       >
-                        <Image
+                        <img
                           src={item!.image}
                           alt=""
                           width={40}
