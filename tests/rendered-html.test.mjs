@@ -78,6 +78,7 @@ test("includes production assets and removes the starter preview", async () => {
     "../public/icons/item-antidote-potion.svg",
     "../drizzle/0000_lumpy_hammerhead.sql",
     "../drizzle/0001_familiar_susan_delgado.sql",
+    "../public/icons/enemy-gaiser.svg",
     "../public/icons/weapon-longsword.svg",
     "../public/icons/weapon-longbow.svg",
     "../public/icons/weapon-oakstaff.svg",
