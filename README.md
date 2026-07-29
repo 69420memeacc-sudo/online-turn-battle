@@ -24,3 +24,10 @@ npm run dev
 npm run build
 npm test
 ```
+
+## Cloudflareへ公開
+
+```bash
+npx wrangler d1 migrations apply DB --remote
+npm run deploy
+```
