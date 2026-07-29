@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CROWN & CLAW — オフラインモード</title>
+  <style>
+    :root{--ink:#e9e2d2;--muted:#9f9a90;--paper:#171817;--panel:#1d1e1d;--line:rgba(222,210,184,.14);--gold:#c7a664;--human:#648bb9;--monster:#a85956;--danger:#d96b5f}
+    *{box-sizing:border-box} body{margin:0;font-family:Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:var(--ink);background:#111211}
+    main{width:min(1180px,100%);margin:0 auto;padding:24px}
+    h1,h2,h3{font-family:Georgia,"Yu Mincho",serif;font-weight:400} a{color:inherit}
+    .panel{border:1px solid var(--line);background:rgba(26,27,25,.92);box-shadow:0 16px 48px rgba(0,0,0,.25);padding:18px}
+    .grid{display:grid;gap:16px}.top{grid-template-columns:1.1fr .9fr}.battle{grid-template-columns:1fr 1fr}.cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}.fighter{border:1px solid var(--line);padding:14px;background:#151615}.bar{height:10px;background:#242622;overflow:hidden}.bar>span{display:block;height:100%}.hp span{background:#b85c59}.mp span{background:#5d86c0}.muted{color:var(--muted);font-size:12px}
+    label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)} input,select,button{font:inherit} input,select{height:40px;border:1px solid var(--line);background:#121312;color:var(--ink);padding:0 10px}
+    button{border:1px solid #d1b976;background:#947636;color:#fff6de;cursor:pointer;padding:10px 14px} button.secondary{background:#161816;border-color:var(--line)} button:disabled{opacity:.45;cursor:not-allowed}
+    .row{display:flex;gap:10px;flex-wrap:wrap}.checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.check{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);padding:8px;background:#141514}.check img{width:28px;height:28px;object-fit:contain}.actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.actions button{display:flex;gap:10px;align-items:center;justify-content:flex-start;background:#151615;border-color:var(--line);min-height:72px;color:var(--ink)} .actions button img{width:34px;height:34px;object-fit:contain}
+    .log{max-height:480px;overflow:auto;padding-left:18px}.log li{margin:0 0 8px}.pill{display:inline-block;padding:4px 8px;border:1px solid var(--line);font-size:12px;margin-right:6px}.human{color:#a8c4eb}.monster{color:#d69795}
+    .status{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.status .pill{font-size:11px}.danger{color:#f4bbb5}.good{color:#b5efc2}
+    @media (max-width: 900px){.top,.battle{grid-template-columns:1fr}.cards,.checks,.actions{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div>
+      <div class="muted">CROWN &amp; CLAW — PROTOTYPE 04</div>
+      <h1 style="margin:6px 0 0">オフラインモード / 魔炎龍ガイザー</h1>
+    </div>
+    <a href="/" class="muted">← オンラインモードへ戻る</a>
+  </div>
+
+  <section class="grid top">
+    <div class="panel">
+      <h2 style="margin-top:0">編成</h2>
+      <div class="grid" style="grid-template-columns:1fr 1fr">
+        <label>名前<input id="playerName" value="あなた" maxlength="16"></label>
+        <label>ガイザーレベル<input id="botLevel" type="number" min="1" max="99" value="20"></label>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:12px">
+        <label>武器<select id="weaponSelect"></select></label>
+        <label>防具<select id="armorSelect"></select></label>
+      </div>
+      <h3>スキル（2つまで）</h3>
+      <div id="skillChecks" class="checks"></div>
+      <h3>追加アイテム（3つまで）</h3>
+      <div id="itemChecks" class="checks"></div>
+      <div class="row" style="margin-top:14px">
+        <button id="startBtn">この編成で開始</button>
+        <button id="resetBtn" class="secondary">編成を初期化</button>
+      </div>
+      <p class="muted">ルビーの結晶・サファイアの結晶は標準支給されます。白雪姫の涙は2ターン睡眠、毒は解毒可能です。</p>
+    </div>
+
+    <div class="panel">
+      <h2 style="margin-top:0">ルール概要</h2>
+      <ul class="muted">
+        <li>1対1、あなたが先攻です。</li>
+        <li>魔炎龍ガイザーのHPは <code>140 + floor(8.6768N)</code>。</li>
+        <li>行動はランダムで 3 種類：地獄炎 / ポイズンブレス / 眠りの息。</li>
+        <li>ポイズンブレスの毒ダメージは毎ターン <code>1 + floor(0.1N)</code>。</li>
+        <li>緑精霊エルザレムの杖は、エメラルド結晶1個の倍率を <strong>1.6倍</strong> にします。</li>
+      </ul>
+      <div id="summary" class="muted"></div>
+    </div>
+  </section>
+
+  <section class="grid battle" style="margin-top:18px">
+    <div class="panel">
+      <h2 style="margin-top:0">戦況</h2>
+      <div class="cards">
+        <div id="playerCard" class="fighter"></div>
+        <div id="botCard" class="fighter"></div>
+      </div>
+      <div class="status" id="turnInfo"></div>
+      <h3>行動</h3>
+      <div id="actionButtons" class="actions"></div>
+    </div>
+    <div class="panel">
+      <h2 style="margin-top:0">戦闘ログ</h2>
+      <ol id="battleLog" class="log"></ol>
+    </div>
+  </section>
+</main>
+<script>
+(() => {
+  const DEFAULT_EMERALD_MULTIPLIER = 1.2;
+  const DATA = {
+    weapons: [
+      { id: "longsword", name: "騎士の長剣", damage: 18, type: "sword", image: "/icons/weapon-longsword.svg" },
+      { id: "longbow", name: "灰木の長弓", damage: 16, type: "bow", image: "/icons/weapon-longbow.svg" },
+      { id: "oakstaff", name: "古樫の杖", damage: 12, type: "staff", image: "/icons/weapon-oakstaff.svg", healingBonus: 8 },
+      { id: "ancient_rapier", name: "古代のレイピア", damage: 20, type: "sword", image: "/icons/weapon-ancient-rapier.svg", forbidsPowerStrike: true, ignoresDefense: true },
+      { id: "demon_twin_blades", name: "妖魔双刀", damage: 13, type: "sword", image: "/icons/weapon-demon-twin-blades.svg", maxStatMultiplier: 0.8, forbidsPowerStrike: true, actionsPerTurn: 2 },
+      { id: "giant_sword", name: "巨人の剣", damage: 35, type: "sword", image: "/icons/weapon-giant-sword.svg", alwaysPowerStrike: true, skipsEveryOtherTurn: true },
+      { id: "elzarem_staff", name: "緑精霊エルザレムの杖", damage: 8, type: "staff", image: "/icons/weapon-elzarem-staff.svg", emeraldMultiplier: 1.6 },
+    ],
+    armors: [
+      { id: "chainmail", name: "王国の鎖帷子", defense: 4, mpBonus: 0, image: "/icons/armor-chainmail.png" },
+      { id: "leather", name: "狩人の革鎧", defense: 2, mpBonus: 0, image: "/icons/armor-leather.png" },
+      { id: "runedcloak", name: "ルーンの外套", defense: 1, mpBonus: 100, image: "/icons/armor-rune-cloak.png" },
+    ],
+    skills: [
+      { id: "power_strike", name: "渾身撃", kind: "attack", image: "/icons/skill-power-strike.svg" },
+      { id: "mend", name: "治癒の祈り", kind: "heal", mpCost: 15, image: "/icons/skill-mend.svg" },
+      { id: "guard", name: "堅守の構え", kind: "guard", image: "/icons/skill-guard.svg" },
+      { id: "golden_arrow", name: "黄金の光矢", kind: "magic", mpCost: 55, image: "/icons/skill-golden-arrow.svg", requiredWeaponType: "bow" },
+      { id: "divine_arrow", name: "神の矢", kind: "magic", consumeAllMp: true, image: "/icons/skill-divine-arrow.svg", requiredWeaponType: "bow" },
+      { id: "death_scythe", name: "死神の鎌", kind: "magic", mpCost: 250, hpCost: 80, image: "/icons/skill-death-scythe.svg" },
+      { id: "drain", name: "吸引", kind: "drain", image: "/icons/skill-drain.svg", requiredWeaponType: "staff" },
+      { id: "thief_life", name: "盗賊の生き方", kind: "steal", image: "/icons/skill-thief-life.svg" },
+      { id: "cruelty", name: "残忍", kind: "passive", image: "/icons/skill-cruelty.svg" },
+    ],
+    items: [
+      { id: "ruby_crystal", name: "ルビーの結晶", image: "/icons/item-ruby-crystal.svg", target: "ally" },
+      { id: "sapphire_crystal", name: "サファイアの結晶", image: "/icons/item-sapphire-crystal.svg", target: "ally" },
+      { id: "snow_white_tear", name: "白雪姫の涙", image: "/icons/item-snow-white-tear.svg", target: "enemy", extraOnly: true },
+      { id: "heavens_scale", name: "天国の天秤", image: "/icons/item-heavens-scale.svg", target: "enemy", extraOnly: true },
+      { id: "poison_potion", name: "毒ポーション", image: "/icons/item-poison-potion.svg", target: "enemy", extraOnly: true },
+      { id: "antidote_potion", name: "解毒ポーション", image: "/icons/item-antidote-potion.svg", target: "ally", extraOnly: true },
+      { id: "emerald_crystal", name: "エメラルドの結晶", image: "/icons/item-emerald-crystal.svg", passive: true, extraOnly: true },
+      { id: "diamond_crystal", name: "ダイヤモンドの結晶", image: "/icons/item-diamond-crystal.svg", passive: true, extraOnly: true },
+    ],
+  };
+  const byId = (arr, id) => arr.find(x => x.id === id);
+  const $ = sel => document.querySelector(sel);
+  const skillChecks = $("#skillChecks");
+  const itemChecks = $("#itemChecks");
+  const state = { battle: null, extraTurn: false };
+
+  function populateSelectors() {
+    for (const w of DATA.weapons) $("#weaponSelect").insertAdjacentHTML("beforeend", `<option value="${w.id}">${w.name}</option>`);
+    for (const a of DATA.armors) $("#armorSelect").insertAdjacentHTML("beforeend", `<option value="${a.id}">${a.name}</option>`);
+    $("#weaponSelect").value = "longsword";
+    $("#armorSelect").value = "chainmail";
+    renderCheckGroups();
+  }
+
+  function renderCheckGroups() {
+    skillChecks.innerHTML = "";
+    const weaponId = $("#weaponSelect").value;
+    const weapon = byId(DATA.weapons, weaponId);
+    DATA.skills.forEach(skill => {
+      if (skill.requiredWeaponType && skill.requiredWeaponType !== weapon.type) return;
+      if (skill.id === "power_strike" && weapon.forbidsPowerStrike) return;
+      skillChecks.insertAdjacentHTML("beforeend", `<label class="check"><input type="checkbox" data-skill="${skill.id}"><img src="${skill.image}" alt=""><span><strong>${skill.name}</strong><br><span class="muted">${skill.kind === "passive" ? "自動" : (skill.consumeAllMp ? "MP全消費" : skill.mpCost ? `MP${skill.mpCost}` : "")}</span></span></label>`);
+    });
+    itemChecks.innerHTML = "";
+    DATA.items.filter(i => i.extraOnly).forEach(item => {
+      itemChecks.insertAdjacentHTML("beforeend", `<label class="check"><input type="checkbox" data-item="${item.id}"><img src="${item.image}" alt=""><span><strong>${item.name}</strong></span></label>`);
+    });
+  }
+
+  function maxStats(weapon, armor) {
+    const m = weapon.maxStatMultiplier || 1;
+    const maxHp = Math.floor(100 * m);
+    const baseMp = weapon.type === "staff" ? 200 : 100;
+    const maxMp = Math.floor((baseMp + (armor.mpBonus || 0)) * m);
+    return { maxHp, maxMp };
+  }
+
+  function collectSetup() {
+    const weapon = byId(DATA.weapons, $("#weaponSelect").value);
+    const armor = byId(DATA.armors, $("#armorSelect").value);
+    const skillIds = [...document.querySelectorAll("[data-skill]:checked")].map(el => el.dataset.skill).slice(0,2);
+    const itemIds = [...document.querySelectorAll("[data-item]:checked")].map(el => el.dataset.item).slice(0,3);
+    const botLevel = Math.max(1, Math.min(99, Number($("#botLevel").value || 1)));
+    const name = ($("#playerName").value || "あなた").slice(0,16);
+    return { weapon, armor, skillIds, itemIds, botLevel, name };
+  }
+
+  function startBattle() {
+    const { weapon, armor, skillIds, itemIds, botLevel, name } = collectSetup();
+    const { maxHp, maxMp } = maxStats(weapon, armor);
+    const player = {
+      name, hp: maxHp, maxHp, mp: maxMp, maxMp, barrier:0, weapon, armor, skillIds, itemIds:["ruby_crystal","sapphire_crystal",...itemIds], cooldowns:{}, sleep:0, poisoned:0, poisonDamage:6, extraPending:0, giantWait:0,
+    };
+    const bot = {
+      name: `魔炎龍ガイザー Lv${botLevel}`,
+      level: botLevel,
+      hp: 140 + Math.floor(8.6768 * botLevel),
+      maxHp: 140 + Math.floor(8.6768 * botLevel),
+      mp:0,maxMp:0,barrier:0,sleep:0,poisoned:0,poisonDamage:1+Math.floor(0.1*botLevel)
+    };
+    state.battle = { player, bot, turn:"player", finished:false, log:[], winner:null };
+    log(`オフライン戦を開始。${bot.name} が現れた`);
+    render();
+  }
+
+  function emeraldMultiplier(player) {
+    const count = player.itemIds.filter(id => id === "emerald_crystal").length;
+    const per = player.weapon.emeraldMultiplier || DEFAULT_EMERALD_MULTIPLIER;
+    return Math.floor((count>0 ? 100* (per ** count) : 1000) ) / 1000;
+  }
+
+  function damageTarget(target, raw, ignoreDefense=false) {
+    let damage = Math.max(1, Math.floor(raw));
+    if (!ignoreDefense) {
+      const defense = target.armor ? target.armor.defense : 0;
+      damage = Math.max(1, damage - defense);
+      if (target.itemIds && target.itemIds.includes("diamond_crystal")) damage = Math.floor(damage * 0.8);
+    }
+    const absorbed = Math.min(target.barrier || 0, damage);
+    target.barrier = Math.max(0, (target.barrier||0) - absorbed);
+    damage -= absorbed;
+    if (!ignoreDefense && target.itemIds && target.itemIds.includes("diamond_crystal")) damage = Math.min(50, damage);
+    target.hp = Math.max(0, target.hp - damage);
+    return { damage, absorbed };
+  }
+
+  function heal(player, amount){ const prev = player.hp; player.hp = Math.min(player.maxHp, player.hp+amount); return player.hp-prev; }
+  function useMp(player, amount){ player.mp = Math.max(0, player.mp-amount); }
+  function hasSkill(id){ return state.battle.player.skillIds.includes(id); }
+  function hasItem(id){ return state.battle.player.itemIds.includes(id); }
+  function countItem(id){ return state.battle.player.itemIds.filter(x=>x===id).length; }
+  function removeItem(id){ const i = state.battle.player.itemIds.indexOf(id); if(i>=0) state.battle.player.itemIds.splice(i,1); }
+
+  function log(text){ const b = state.battle; if(!b) return; b.log.unshift(text); renderLog(); }
+  function renderLog(){ const logEl = $("#battleLog"); const logs = state.battle?.log || []; logEl.innerHTML = logs.map(x=>`<li>${x}</li>`).join(""); }
+  function finish(winner){ state.battle.finished = true; state.battle.winner = winner; log(winner === "player" ? "あなたの勝利！" : `${state.battle.bot.name} の勝利…`); render(); }
+
+  function applyStartOfTurn(entity, side){
+    if (entity.hp <= 0) return false;
+    if (entity.poisoned) {
+      const d = Math.min(entity.poisonDamage || 6, entity.hp);
+      entity.hp = Math.max(0, entity.hp - d);
+      log(`${entity.name}は毒により${d}ダメージを受けた`);
+      if (entity.hp <= 0) { finish(side === "player" ? "bot" : "player"); return true; }
+    }
+    if (entity.sleep > 0) {
+      entity.sleep -= 1;
+      log(`${entity.name}は眠っているため行動できない（残り${entity.sleep}）`);
+      return true;
+    }
+    return false;
+  }
+
+  function tickCooldowns(){ const cd = state.battle.player.cooldowns; for (const k of Object.keys(cd)) cd[k] = Math.max(0, cd[k]-1); }
+
+  function playerAction(actionId) {
+    const b = state.battle; if(!b || b.finished || b.turn !== "player") return;
+    const p = b.player, bot = b.bot;
+    if (!state.extraTurn && applyStartOfTurn(p, "player")) { endPlayerTurn(true); return; }
+    const weapon = p.weapon;
+    const skill = byId(DATA.skills, actionId);
+    const item = byId(DATA.items, actionId);
+    let message = "";
+
+    if (actionId === "basic") {
+      const auto = weapon.alwaysPowerStrike;
+      let raw = auto ? weapon.damage + 10 : weapon.damage;
+      raw = Math.floor(raw * Math.pow(weapon.emeraldMultiplier || DEFAULT_EMERALD_MULTIPLIER, countItem("emerald_crystal")));
+      const res = damageTarget(bot, raw, !!weapon.ignoresDefense);
+      message = `${p.name}の${auto ? weapon.name + "の渾身撃" : weapon.name + "の攻撃"}。${bot.name}に${res.damage}ダメージ`;
+    } else if (skill) {
+      if (skill.requiredWeaponType && skill.requiredWeaponType !== weapon.type) return;
+      if ((skill.mpCost||0) > p.mp) return;
+      if (skill.consumeAllMp && p.mp <= 0) return;
+      if ((skill.hpCost||0) >= p.hp) return;
+      const cooldown = p.cooldowns[actionId] || 0; if (cooldown > 0) return;
+      if (skill.mpCost) useMp(p, skill.mpCost); if (skill.hpCost) p.hp -= skill.hpCost;
+      if (actionId === "power_strike") {
+        let raw = Math.floor((weapon.damage + 10) * Math.pow(weapon.emeraldMultiplier || DEFAULT_EMERALD_MULTIPLIER, countItem("emerald_crystal")));
+        const res = damageTarget(bot, raw, false); message = `${p.name}の渾身撃。${bot.name}に${res.damage}ダメージ`;
+      } else if (actionId === "mend") {
+        const amount = heal(p, 22 + (weapon.healingBonus||0)); message = `${p.name}は治癒の祈りでHPを${amount}回復した`;
+      } else if (actionId === "guard") {
+        const before = p.barrier; p.barrier = Math.min(36, p.barrier + 18); message = `${p.name}は堅守の構えで${p.barrier - before}の防壁を得た`;
+      } else if (actionId === "golden_arrow") {
+        let raw = Math.floor(40 * Math.pow(weapon.emeraldMultiplier || DEFAULT_EMERALD_MULTIPLIER, countItem("emerald_crystal")));
+        const res = damageTarget(bot, raw, false); message = `${p.name}は黄金の光矢を放ち、${bot.name}に${res.damage}ダメージ`;
+      } else if (actionId === "divine_arrow") {
+        const spent = p.mp; p.mp = 0; const raw = Math.floor(spent * 0.33); const res = damageTarget(bot, raw, false); message = `${p.name}はMP${spent}を捧げ神の矢を放ち、${bot.name}に${res.damage}ダメージ`;
+      } else if (actionId === "death_scythe") {
+        const res = damageTarget(bot, 999, false); message = `${p.name}は死神の鎌で${bot.name}に${res.damage}ダメージ`;
+      } else if (actionId === "drain") {
+        const stealHp = Math.min(10, bot.hp); const stealMp = Math.min(15, bot.mp); bot.hp -= stealHp; bot.mp -= stealMp; p.hp = Math.min(p.maxHp, p.hp + stealHp); p.mp = Math.min(p.maxMp, p.mp + stealMp); message = `${p.name}は${bot.name}からHP${stealHp}・MP${stealMp}を吸引した`;
+      } else if (actionId === "thief_life") {
+        message = `${bot.name}はアイテムを持っていない。盗賊の生き方は空振りに終わった`;
+      }
+      if (skill.id !== "cruelty" && actionId !== "basic") p.cooldowns[actionId] = actionId === "guard" ? 1 : actionId === "mend" ? 2 : actionId === "drain" ? 3 : actionId === "thief_life" ? 4 : actionId === "power_strike" ? 2 : 0;
+    } else if (item) {
+      if (!hasItem(actionId)) return;
+      if (actionId === "ruby_crystal") { const amount = heal(p, 30); message = `${p.name}はルビーの結晶を使いHPを${amount}回復した`; }
+      else if (actionId === "sapphire_crystal") { const before = p.mp; p.mp = Math.min(p.maxMp, p.mp + Math.floor(p.maxMp * 0.3)); message = `${p.name}はサファイアの結晶を使いMPを${p.mp - before}回復した`; }
+      else if (actionId === "snow_white_tear") { bot.sleep = Math.max(bot.sleep, 2); message = `${p.name}は白雪姫の涙を使い、${bot.name}を2ターン眠らせた`; }
+      else if (actionId === "heavens_scale") {
+        if (p.mp === bot.mp) message = `天国の天秤は両者のMPが等しいと示した。ダメージはない`;
+        else if (p.mp < bot.mp) { const res = damageTarget(p, 50, false); message = `天国の天秤により${p.name}が${res.damage}ダメージを受けた`; }
+        else { const res = damageTarget(bot, 50, false); message = `天国の天秤により${bot.name}が${res.damage}ダメージを受けた`; }
+      }
+      else if (actionId === "poison_potion") { bot.poisoned = 1; bot.poisonDamage = 6; message = `${p.name}は毒ポーションを使い、${bot.name}を毒状態にした`; }
+      else if (actionId === "antidote_potion") { p.poisoned = 0; message = `${p.name}は解毒ポーションで毒を解除した`; }
+      removeItem(actionId);
+    }
+
+    log(message);
+    if (bot.hp <= 0) {
+      if (hasSkill("cruelty")) {
+        const rate = p.armor.id === "leather" ? 0.66 : 0.5; const h = Math.floor(p.maxHp*rate), m = Math.floor(p.maxMp*rate); p.hp = Math.min(p.maxHp, p.hp+h); p.mp = Math.min(p.maxMp, p.mp+m); log(`残忍が発動し、HPとMPが${Math.round(rate*100)}%回復した`);
+      }
+      finish("player"); return;
+    }
+    endPlayerTurn(false);
+  }
+
+  function endPlayerTurn(skipped) {
+    const b = state.battle; if(!b || b.finished) return;
+    const p = b.player;
+    if (p.weapon.actionsPerTurn > 1 && !state.extraTurn && !skipped) {
+      state.extraTurn = true; log(`妖魔双刀により、もう1回行動できる`); render(); return;
+    }
+    state.extraTurn = false;
+    if (p.weapon.skipsEveryOtherTurn && !skipped) p.giantWait = 1;
+    b.turn = "bot"; tickCooldowns(); render(); setTimeout(botTurn, 500);
+  }
+
+  function beginPlayerTurn() {
+    const b = state.battle; if(!b || b.finished) return;
+    b.turn = "player";
+    const skipped = applyStartOfTurn(b.player, "player");
+    render();
+    if (b.finished) return;
+    if (skipped) {
+      b.turn = "bot";
+      render();
+      setTimeout(botTurn, 500);
+    }
+  }
+
+  function botTurn() {
+    const b = state.battle; if(!b || b.finished) return;
+    const bot = b.bot, p = b.player;
+    if (applyStartOfTurn(bot, "bot")) { if (!b.finished) beginPlayerTurn(); return; }
+    const level = bot.level;
+    const roll = Math.floor(Math.random()*3);
+    let message = "";
+    if (roll === 0) {
+      const raw = 10 + Math.floor(0.4 * level); const res = damageTarget(p, raw, false); message = `${bot.name}の地獄炎。${p.name}に${res.damage}ダメージ`;
+    } else if (roll === 1) {
+      const raw = 3 + Math.floor(0.1 * level); const res = damageTarget(p, raw, false); p.poisoned = 1; p.poisonDamage = 1 + Math.floor(0.1 * level); message = `${bot.name}のポイズンブレス。${p.name}に${res.damage}ダメージ、さらに毒を付与した`;
+    } else {
+      p.sleep = Math.max(p.sleep, 2); message = `${bot.name}の眠りの息。${p.name}は2ターン眠りに落ちた`;
+    }
+    log(message);
+    if (p.hp <= 0) { finish("bot"); return; }
+    if (p.giantWait) { p.giantWait = 0; log(`${p.name}は巨人の剣を振るった反動で手番を休んだ`); setTimeout(botTurn, 500); return; }
+    beginPlayerTurn();
+  }
+
+  function cardHtml(f) {
+    const hpPct = Math.max(0, f.hp / f.maxHp * 100); const mpPct = f.maxMp ? Math.max(0, f.mp / f.maxMp * 100) : 0;
+    const statuses = [];
+    if (f.sleep) statuses.push(`<span class="pill">睡眠 ${f.sleep}</span>`);
+    if (f.poisoned) statuses.push(`<span class="pill danger">毒</span>`);
+    if (f.barrier) statuses.push(`<span class="pill">防壁 ${f.barrier}</span>`);
+    return `<div class="row" style="justify-content:space-between"><strong>${f.name}</strong><span class="muted">HP ${f.hp}/${f.maxHp}</span></div>
+      <div class="bar hp"><span style="width:${hpPct}%"></span></div>
+      <div class="row" style="justify-content:space-between;margin-top:8px"><span class="muted">MP ${f.mp||0}/${f.maxMp||0}</span></div>
+      <div class="bar mp"><span style="width:${mpPct}%"></span></div>
+      <div class="status">${statuses.join("")}</div>`;
+  }
+
+  function renderActions() {
+    const box = $("#actionButtons"); box.innerHTML = ""; const b = state.battle; if (!b) return;
+    const p = b.player; const disabled = b.finished || b.turn !== "player";
+    const add = (id,name,img,en=true) => box.insertAdjacentHTML("beforeend", `<button ${disabled||!en?"disabled":""} data-act="${id}"><img src="${img}" alt=""><span>${name}</span></button>`);
+    add("basic", p.sleep > 0 ? "睡眠中：ターンを進める" : "基本攻撃", p.weapon.image, true);
+    p.skillIds.forEach(id => {
+      const s = byId(DATA.skills, id); if (!s || s.kind === "passive") return;
+      const okMp = s.consumeAllMp ? p.mp > 0 : (s.mpCost||0) <= p.mp;
+      const okHp = (s.hpCost||0) < p.hp; const okCd = (p.cooldowns[id]||0) <= 0;
+      add(id, s.name, s.image, okMp && okHp && okCd && p.sleep <= 0);
+    });
+    [...new Set(p.itemIds)].forEach(id => { const item = byId(DATA.items, id); if (item && !item.passive) add(id, `${item.name} ×${p.itemIds.filter(x=>x===id).length}`, item.image, p.sleep <= 0); });
+    if (hasSkill("cruelty")) add("cruelty_display", "残忍（パッシブ）", "/icons/skill-cruelty.svg", false);
+    box.querySelectorAll("button[data-act]").forEach(btn => btn.addEventListener("click", () => playerAction(btn.dataset.act)));
+  }
+
+  function render() {
+    const b = state.battle;
+    $("#summary").innerHTML = b ? `現在のエメラルド倍率: <strong>${emeraldMultiplier(b.player).toFixed(3)}</strong> / ターン: <strong>${b.turn === "player" ? "あなた" : "ガイザー"}</strong>` : "まだ戦闘は始まっていません。";
+    $("#playerCard").innerHTML = b ? cardHtml(b.player) : '<div class="muted">戦闘前</div>';
+    $("#botCard").innerHTML = b ? cardHtml(b.bot) : '<div class="muted">戦闘前</div>';
+    $("#turnInfo").innerHTML = b ? `<span class="pill ${b.turn === "player" ? "human" : "monster"}">${b.turn === "player" ? "あなたの手番" : "ガイザーの手番"}</span>${b.finished ? `<span class="pill">${b.winner === "player" ? "勝利" : "敗北"}</span>` : ""}` : "";
+    renderActions(); renderLog();
+  }
+
+  $("#weaponSelect").addEventListener("change", renderCheckGroups);
+  $("#startBtn").addEventListener("click", () => {
+    if ([...document.querySelectorAll('[data-skill]:checked')].length > 2) return alert('スキルは2つまでです');
+    if ([...document.querySelectorAll('[data-item]:checked')].length > 3) return alert('追加アイテムは3つまでです');
+    startBattle();
+  });
+  $("#resetBtn").addEventListener("click", () => { document.querySelectorAll('[data-skill]:checked,[data-item]:checked').forEach(el => el.checked = false); $("#weaponSelect").value='longsword'; $("#armorSelect").value='chainmail'; $("#botLevel").value='20'; renderCheckGroups(); render(); });
+  document.addEventListener('change', (e) => {
+    if (e.target.matches('[data-skill]')) {
+      const checked = [...document.querySelectorAll('[data-skill]:checked')];
+      if (checked.length > 2) { e.target.checked = false; alert('スキルは2つまでです'); }
+    }
+    if (e.target.matches('[data-item]')) {
+      const checked = [...document.querySelectorAll('[data-item]:checked')];
+      if (checked.length > 3) { e.target.checked = false; alert('追加アイテムは3つまでです'); }
+    }
+  });
+  populateSelectors(); render();
+})();
+</script>
+</body>
+</html>

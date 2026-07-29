@@ -1432,6 +1432,33 @@ select:focus-visible {
   color: var(--gold-bright);
 }
 
+.secondary-action {
+  display: grid;
+  min-height: 48px;
+  margin-top: 10px;
+  place-items: center;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+  background: #171918;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.secondary-action:hover {
+  border-color: rgba(199, 166, 100, 0.55);
+}
+
+.action-icon-image {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.item-card .generated-icon {
+  flex: 0 0 auto;
+}
+
 footer {
   display: flex;
   height: 56px;

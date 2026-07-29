@@ -549,6 +549,9 @@ export default function Home() {
             >
               {busy ? "門を開いています…" : "新しい戦場を作る"}
             </button>
+            <a className="secondary-action" href="/offline.html">
+              1人用オフラインモード
+            </a>
             <div className="divider">
               <span>または招待から参加</span>
             </div>
@@ -624,7 +627,13 @@ export default function Home() {
                       }
                       onClick={() => selectWeapon(weapon.id)}
                     >
-                      <span className="item-icon">{weapon.icon}</span>
+                      <img
+                          className="generated-icon"
+                          src={weapon.image}
+                          alt={weapon.name}
+                          width={52}
+                          height={52}
+                        />
                       <span className="item-copy">
                         <b>{weapon.name}</b>
                         <small>{weapon.description}</small>
@@ -688,7 +697,13 @@ export default function Home() {
                         }
                         onClick={() => toggleSkill(skill.id)}
                       >
-                        <span className="item-icon">{skill.icon}</span>
+                        <img
+                          className="generated-icon"
+                          src={skill.image}
+                          alt={skill.name}
+                          width={52}
+                          height={52}
+                        />
                         <span className="item-copy">
                           <b>{skill.name}</b>
                           <small>{skill.description}</small>
@@ -953,7 +968,13 @@ export default function Home() {
               <h3 className="action-section-title">攻撃・スキル・魔法</h3>
               <div className="action-grid">
                 <button disabled={!myTurn || busy} onClick={() => act("basic")}>
-                  <span>⚔</span>
+                  <img
+                    className="action-icon-image"
+                    src={weaponById(self?.weaponId ?? "")?.image ?? "/icons/weapon-longsword.svg"}
+                    alt=""
+                    width={36}
+                    height={36}
+                  />
                   <b>基本攻撃</b>
                   <small>
                     {weaponById(self?.weaponId ?? "")?.damage ?? 0} 基礎ダメージ
@@ -987,8 +1008,14 @@ export default function Home() {
                       }
                       onClick={() => act(skill.id)}
                     >
-                      <span>{skill.icon}</span>
-                      <b>{skill.name}</b>
+                      <img
+                         className="action-icon-image"
+                         src={skill.image}
+                         alt=""
+                         width={36}
+                         height={36}
+                       />
+                       <b>{skill.name}</b>
                       <small>
                         {cooldown > 0
                           ? `あと${cooldown}手番`
@@ -1007,7 +1034,13 @@ export default function Home() {
                 })}
                 {self?.skillIds.includes("cruelty") ? (
                   <div className="passive-skill-card">
-                    <span>♰</span>
+                    <img
+                      className="action-icon-image"
+                      src="/icons/skill-cruelty.svg"
+                      alt=""
+                      width={36}
+                      height={36}
+                    />
                     <b>残忍</b>
                     <small>敵撃破時に自動発動</small>
                   </div>
@@ -1097,7 +1130,7 @@ export default function Home() {
       ) : null}
 
       <footer>
-        <span>CROWN &amp; CLAW — PROTOTYPE 03</span>
+        <span>CROWN &amp; CLAW — PROTOTYPE 04</span>
         <span>交互ターン制・2陣営対戦</span>
       </footer>
     </main>

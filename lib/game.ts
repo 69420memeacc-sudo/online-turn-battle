@@ -9,6 +9,7 @@ export type Weapon = {
   damage: number;
   type: WeaponType;
   icon: string;
+  image: string;
   healingBonus?: number;
   maxStatMultiplier?: number;
   forbidsPowerStrike?: boolean;
@@ -44,6 +45,7 @@ export type Skill = {
   description: string;
   cooldown: number;
   icon: string;
+  image: string;
   kind: SkillKind;
   mpCost?: number;
   hpCost?: number;
@@ -79,6 +81,7 @@ export const WEAPONS: Weapon[] = [
     damage: 18,
     type: "sword",
     icon: "⚔",
+    image: "/icons/weapon-longsword.svg",
   },
   {
     id: "longbow",
@@ -87,6 +90,7 @@ export const WEAPONS: Weapon[] = [
     damage: 16,
     type: "bow",
     icon: "➳",
+    image: "/icons/weapon-longbow.svg",
   },
   {
     id: "oakstaff",
@@ -96,6 +100,7 @@ export const WEAPONS: Weapon[] = [
     type: "staff",
     healingBonus: 8,
     icon: "✦",
+    image: "/icons/weapon-oakstaff.svg",
   },
   {
     id: "ancient_rapier",
@@ -105,6 +110,7 @@ export const WEAPONS: Weapon[] = [
     damage: 20,
     type: "sword",
     icon: "†",
+    image: "/icons/weapon-ancient-rapier.svg",
     forbidsPowerStrike: true,
     ignoresDefense: true,
   },
@@ -116,6 +122,7 @@ export const WEAPONS: Weapon[] = [
     damage: 13,
     type: "sword",
     icon: "⚔⚔",
+    image: "/icons/weapon-demon-twin-blades.svg",
     maxStatMultiplier: 0.8,
     forbidsPowerStrike: true,
     actionsPerTurn: 2,
@@ -128,6 +135,7 @@ export const WEAPONS: Weapon[] = [
     damage: 35,
     type: "sword",
     icon: "▰",
+    image: "/icons/weapon-giant-sword.svg",
     skipsEveryOtherTurn: true,
     alwaysPowerStrike: true,
   },
@@ -135,11 +143,12 @@ export const WEAPONS: Weapon[] = [
     id: "elzarem_staff",
     name: "緑精霊エルザレムの杖",
     description:
-      "攻8。基礎最大MPが200になり、エメラルド結晶1個の倍率が1.4倍になる。",
+      "攻8。基礎最大MPが200になり、エメラルド結晶1個の倍率が1.6倍になる。",
     damage: 8,
     type: "staff",
     icon: "♧",
-    emeraldMultiplier: 1.4,
+    image: "/icons/weapon-elzarem-staff.svg",
+    emeraldMultiplier: 1.6,
   },
 ];
 
@@ -180,6 +189,7 @@ export const SKILLS: Skill[] = [
       "武器攻撃力に10を加えた強力な一撃。エメラルドの結晶の倍率が適用される。",
     cooldown: 2,
     icon: "✹",
+    image: "/icons/skill-power-strike.svg",
     kind: "attack",
   },
   {
@@ -188,6 +198,7 @@ export const SKILLS: Skill[] = [
     description: "MP15で自身のHPを22回復する。杖なら効果上昇。",
     cooldown: 2,
     icon: "✚",
+    image: "/icons/skill-mend.svg",
     kind: "heal",
     mpCost: 15,
   },
@@ -197,6 +208,7 @@ export const SKILLS: Skill[] = [
     description: "次に受けるダメージを18まで防ぐ。",
     cooldown: 1,
     icon: "⬟",
+    image: "/icons/skill-guard.svg",
     kind: "guard",
   },
   {
@@ -206,6 +218,7 @@ export const SKILLS: Skill[] = [
       "MP55で指定した敵に攻40。エメラルドの結晶の倍率が適用される。弓装備時のみ。",
     cooldown: 0,
     icon: "☀",
+    image: "/icons/skill-golden-arrow.svg",
     kind: "magic",
     mpCost: 55,
     requiredWeaponType: "bow",
@@ -217,6 +230,7 @@ export const SKILLS: Skill[] = [
       "残りMPをすべて消費し、その33%を攻撃力として敵軍全員に与える。弓装備時のみ。",
     cooldown: 0,
     icon: "✧",
+    image: "/icons/skill-divine-arrow.svg",
     kind: "magic",
     consumeAllMp: true,
     requiredWeaponType: "bow",
@@ -227,6 +241,7 @@ export const SKILLS: Skill[] = [
     description: "MP250とHP80を捧げ、ランダムな敵に攻999。",
     cooldown: 0,
     icon: "☠",
+    image: "/icons/skill-death-scythe.svg",
     kind: "magic",
     mpCost: 250,
     hpCost: 80,
@@ -237,6 +252,7 @@ export const SKILLS: Skill[] = [
     description: "敵からHP10とMP15を奪う。杖装備時のみ。",
     cooldown: 3,
     icon: "◉",
+    image: "/icons/skill-drain.svg",
     kind: "drain",
     requiredWeaponType: "staff",
   },
@@ -246,6 +262,7 @@ export const SKILLS: Skill[] = [
     description: "敵からアイテムをランダムに1つ奪う。",
     cooldown: 4,
     icon: "♠",
+    image: "/icons/skill-thief-life.svg",
     kind: "steal",
   },
   {
@@ -255,6 +272,7 @@ export const SKILLS: Skill[] = [
       "敵を倒すと自動でHPとMPを最大値の50%回復。狩人の革鎧なら66%回復。",
     cooldown: 0,
     icon: "♰",
+    image: "/icons/skill-cruelty.svg",
     kind: "passive",
   },
 ];
@@ -266,7 +284,7 @@ export const ITEMS: GameItem[] = [
     description: "自身または味方1人のHPを30回復。使うとなくなる。",
     kind: "consumable",
     maxCopies: 2,
-    image: "/icons/item-ruby-crystal.png",
+    image: "/icons/item-ruby-crystal.svg",
   },
   {
     id: "sapphire_crystal",
@@ -274,7 +292,7 @@ export const ITEMS: GameItem[] = [
     description: "自身または味方1人の最大MPの30%を回復。",
     kind: "consumable",
     maxCopies: 2,
-    image: "/icons/item-sapphire-crystal.png",
+    image: "/icons/item-sapphire-crystal.svg",
   },
   {
     id: "snow_white_tear",
@@ -282,14 +300,14 @@ export const ITEMS: GameItem[] = [
     description: "指定した敵1人を2ターン眠らせる。",
     kind: "consumable",
     maxCopies: 1,
-    image: "/icons/item-snow-white-tear.png",
+    image: "/icons/item-snow-white-tear.svg",
   },
   {
     id: "heavens_scale",
     name: "天国の天秤",
     description: "ランダムな敵とMPを比べ、低い方が50ダメージ。",
     kind: "consumable",
-    image: "/icons/item-heavens-scale.png",
+    image: "/icons/item-heavens-scale.svg",
   },
   {
     id: "poison_potion",
@@ -312,7 +330,7 @@ export const ITEMS: GameItem[] = [
     description:
       "所持中、通常攻撃・渾身撃・黄金の光矢が1個につき20%増加。緑精霊エルザレムの杖なら40%増加。重複可。",
     kind: "passive",
-    image: "/icons/item-emerald-crystal.png",
+    image: "/icons/item-emerald-crystal.svg",
   },
   {
     id: "diamond_crystal",
@@ -320,7 +338,7 @@ export const ITEMS: GameItem[] = [
     description: "所持中、被ダメージ20%減・1ターン最大50。",
     kind: "passive",
     maxCopies: 1,
-    image: "/icons/item-diamond-crystal.png",
+    image: "/icons/item-diamond-crystal.svg",
   },
 ];
 
