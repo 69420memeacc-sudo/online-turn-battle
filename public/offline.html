@@ -248,7 +248,7 @@
           </div>
           <div class="bot-preview">
             <div class="bot-preview-top">
-              <img src="/icons/enemy-gaiser.svg" alt="魔炎龍ガイザー" />
+              <img src="/icons/enemy-gaiser.png" alt="魔炎龍ガイザー" />
               <div><strong id="botPreviewName">魔炎龍ガイザー Lv20</strong><p>炎・毒・睡眠を操る仮想敵</p></div>
             </div>
             <div class="bot-stats"><span id="botPreviewHp">HP 313</span><span>行動確率 各1/3</span></div>
@@ -321,13 +321,13 @@
     const DEFAULT_ITEMS = ["ruby_crystal", "sapphire_crystal"];
 
     const WEAPONS = [
-      {id:"longsword",name:"騎士の長剣",description:"癖がなく、安定して高い一撃を与える。",damage:18,type:"sword",image:"/icons/weapon-longsword.svg"},
-      {id:"longbow",name:"灰木の長弓",description:"黄金の光矢と神の矢を放てる、狩人の長弓。",damage:16,type:"bow",image:"/icons/weapon-longbow.svg"},
-      {id:"oakstaff",name:"古樫の杖",description:"基礎最大MPが200になり、吸引を使用できる。",damage:12,type:"staff",healingBonus:8,image:"/icons/weapon-oakstaff.svg"},
-      {id:"ancient_rapier",name:"古代のレイピア",description:"攻20。通常攻撃が防具とダイヤモンド結晶を無視。渾身撃は使用不可。",damage:20,type:"sword",forbidsPowerStrike:true,ignoresDefense:true,image:"/icons/weapon-ancient-rapier.svg"},
-      {id:"demon_twin_blades",name:"妖魔双刀",description:"攻13。同じ手番で2回行動。最大HP・MPが20%低下し、渾身撃は使用不可。",damage:13,type:"sword",maxStatMultiplier:.8,forbidsPowerStrike:true,actionsPerTurn:2,image:"/icons/weapon-demon-twin-blades.svg"},
-      {id:"giant_sword",name:"巨人の剣",description:"攻35。基本攻撃が毎回渾身撃（攻45）になるが、次の自分の手番を休む。",damage:35,type:"sword",alwaysPowerStrike:true,skipsEveryOtherTurn:true,image:"/icons/weapon-giant-sword.svg"},
-      {id:"elzarem_staff",name:"緑精霊エルザレムの杖",description:"攻8。基礎最大MP200。エメラルド結晶1個につき攻撃倍率1.6倍。",damage:8,type:"staff",emeraldMultiplier:1.6,image:"/icons/weapon-elzarem-staff.svg"}
+      {id:"longsword",name:"騎士の長剣",description:"癖がなく、安定して高い一撃を与える。",damage:18,type:"sword",image:"/icons/weapon-longsword.png"},
+      {id:"longbow",name:"灰木の長弓",description:"黄金の光矢と神の矢を放てる、狩人の長弓。",damage:16,type:"bow",image:"/icons/weapon-longbow.png"},
+      {id:"oakstaff",name:"古樫の杖",description:"基礎最大MPが200になり、吸引を使用できる。",damage:12,type:"staff",healingBonus:8,image:"/icons/weapon-oakstaff.png"},
+      {id:"ancient_rapier",name:"古代のレイピア",description:"攻20。通常攻撃が防具とダイヤモンド結晶を無視。渾身撃は使用不可。",damage:20,type:"sword",forbidsPowerStrike:true,ignoresDefense:true,image:"/icons/weapon-ancient-rapier.png"},
+      {id:"demon_twin_blades",name:"妖魔双刀",description:"攻13。同じ手番で2回行動。最大HP・MPが20%低下し、渾身撃は使用不可。",damage:13,type:"sword",maxStatMultiplier:.8,forbidsPowerStrike:true,actionsPerTurn:2,image:"/icons/weapon-demon-twin-blades.png"},
+      {id:"giant_sword",name:"巨人の剣",description:"攻35。基本攻撃が毎回渾身撃（攻45）になるが、次の自分の手番を休む。",damage:35,type:"sword",alwaysPowerStrike:true,skipsEveryOtherTurn:true,image:"/icons/weapon-giant-sword.png"},
+      {id:"elzarem_staff",name:"緑精霊エルザレムの杖",description:"攻8。基礎最大MP200。エメラルド結晶1個につき攻撃倍率1.6倍。",damage:8,type:"staff",emeraldMultiplier:1.6,image:"/icons/weapon-elzarem-staff.png"}
     ];
 
     const ARMORS = [
@@ -337,26 +337,26 @@
     ];
 
     const SKILLS = [
-      {id:"power_strike",name:"渾身撃",description:"武器攻撃力に10を加えた一撃。",kind:"attack",cooldown:2,image:"/icons/skill-power-strike.svg"},
-      {id:"mend",name:"治癒の祈り",description:"MP15でHPを22回復。杖なら効果上昇。",kind:"heal",cooldown:2,mpCost:15,image:"/icons/skill-mend.svg"},
-      {id:"guard",name:"堅守の構え",description:"次に受けるダメージを18まで防ぐ。",kind:"guard",cooldown:1,image:"/icons/skill-guard.svg"},
-      {id:"golden_arrow",name:"黄金の光矢",description:"MP55で攻40。弓限定。",kind:"magic",cooldown:0,mpCost:55,requiredWeaponType:"bow",image:"/icons/skill-golden-arrow.svg"},
-      {id:"divine_arrow",name:"神の矢",description:"MPを全消費し、その33%を攻撃力にする。弓限定。",kind:"magic",cooldown:0,consumeAllMp:true,requiredWeaponType:"bow",image:"/icons/skill-divine-arrow.svg"},
-      {id:"death_scythe",name:"死神の鎌",description:"MP250とHP80を捧げて攻999。",kind:"magic",cooldown:0,mpCost:250,hpCost:80,image:"/icons/skill-death-scythe.svg"},
-      {id:"drain",name:"吸引",description:"敵からHP10とMP15を奪う。杖限定。",kind:"drain",cooldown:3,requiredWeaponType:"staff",image:"/icons/skill-drain.svg"},
-      {id:"thief_life",name:"盗賊の生き方",description:"敵からアイテムを奪う。ガイザーはアイテムなし。",kind:"steal",cooldown:4,image:"/icons/skill-thief-life.svg"},
-      {id:"cruelty",name:"残忍",description:"敵撃破時にHP・MPを50%回復。革鎧なら66%。",kind:"passive",cooldown:0,image:"/icons/skill-cruelty.svg"}
+      {id:"power_strike",name:"渾身撃",description:"武器攻撃力に10を加えた一撃。",kind:"attack",cooldown:2,image:"/icons/skill-power-strike.png"},
+      {id:"mend",name:"治癒の祈り",description:"MP15でHPを22回復。杖なら効果上昇。",kind:"heal",cooldown:2,mpCost:15,image:"/icons/skill-mend.png"},
+      {id:"guard",name:"堅守の構え",description:"次に受けるダメージを18まで防ぐ。",kind:"guard",cooldown:1,image:"/icons/skill-guard.png"},
+      {id:"golden_arrow",name:"黄金の光矢",description:"MP55で攻40。弓限定。",kind:"magic",cooldown:0,mpCost:55,requiredWeaponType:"bow",image:"/icons/skill-golden-arrow.png"},
+      {id:"divine_arrow",name:"神の矢",description:"MPを全消費し、その33%を攻撃力にする。弓限定。",kind:"magic",cooldown:0,consumeAllMp:true,requiredWeaponType:"bow",image:"/icons/skill-divine-arrow.png"},
+      {id:"death_scythe",name:"死神の鎌",description:"MP250とHP80を捧げて攻999。",kind:"magic",cooldown:0,mpCost:250,hpCost:80,image:"/icons/skill-death-scythe.png"},
+      {id:"drain",name:"吸引",description:"敵からHP10とMP15を奪う。杖限定。",kind:"drain",cooldown:3,requiredWeaponType:"staff",image:"/icons/skill-drain.png"},
+      {id:"thief_life",name:"盗賊の生き方",description:"敵からアイテムを奪う。ガイザーはアイテムなし。",kind:"steal",cooldown:4,image:"/icons/skill-thief-life.png"},
+      {id:"cruelty",name:"残忍",description:"敵撃破時にHP・MPを50%回復。革鎧なら66%。",kind:"passive",cooldown:0,image:"/icons/skill-cruelty.png"}
     ];
 
     const ITEMS = [
-      {id:"ruby_crystal",name:"ルビーの結晶",description:"自身のHPを30回復。",kind:"consumable",maxCopies:2,image:"/icons/item-ruby-crystal.svg"},
-      {id:"sapphire_crystal",name:"サファイアの結晶",description:"自身の最大MPの30%を回復。",kind:"consumable",maxCopies:2,image:"/icons/item-sapphire-crystal.svg"},
-      {id:"snow_white_tear",name:"白雪姫の涙",description:"ガイザーを2ターン眠らせる。",kind:"consumable",maxCopies:1,image:"/icons/item-snow-white-tear.svg"},
-      {id:"heavens_scale",name:"天国の天秤",description:"MPが低い方に50ダメージ。",kind:"consumable",image:"/icons/item-heavens-scale.svg"},
-      {id:"poison_potion",name:"毒ポーション",description:"ガイザーに毎ターン6ダメージの毒を付与。",kind:"consumable",image:"/icons/item-poison-potion.svg"},
-      {id:"antidote_potion",name:"解毒ポーション",description:"自身の毒状態を解除。",kind:"consumable",image:"/icons/item-antidote-potion.svg"},
-      {id:"emerald_crystal",name:"エメラルドの結晶",description:"攻撃を1個につき1.2倍。エルザレムの杖なら1.6倍。",kind:"passive",image:"/icons/item-emerald-crystal.svg"},
-      {id:"diamond_crystal",name:"ダイヤモンドの結晶",description:"被ダメージ20%減・1ターン最大50。",kind:"passive",maxCopies:1,image:"/icons/item-diamond-crystal.svg"}
+      {id:"ruby_crystal",name:"ルビーの結晶",description:"自身のHPを30回復。",kind:"consumable",maxCopies:2,image:"/icons/item-ruby-crystal.png"},
+      {id:"sapphire_crystal",name:"サファイアの結晶",description:"自身の最大MPの30%を回復。",kind:"consumable",maxCopies:2,image:"/icons/item-sapphire-crystal.png"},
+      {id:"snow_white_tear",name:"白雪姫の涙",description:"ガイザーを2ターン眠らせる。",kind:"consumable",maxCopies:1,image:"/icons/item-snow-white-tear.png"},
+      {id:"heavens_scale",name:"天国の天秤",description:"MPが低い方に50ダメージ。",kind:"consumable",image:"/icons/item-heavens-scale.png"},
+      {id:"poison_potion",name:"毒ポーション",description:"ガイザーに毎ターン6ダメージの毒を付与。",kind:"consumable",image:"/icons/item-poison-potion.png"},
+      {id:"antidote_potion",name:"解毒ポーション",description:"自身の毒状態を解除。",kind:"consumable",image:"/icons/item-antidote-potion.png"},
+      {id:"emerald_crystal",name:"エメラルドの結晶",description:"攻撃を1個につき1.2倍。エルザレムの杖なら1.6倍。",kind:"passive",image:"/icons/item-emerald-crystal.png"},
+      {id:"diamond_crystal",name:"ダイヤモンドの結晶",description:"被ダメージ20%減・1ターン最大50。",kind:"passive",maxCopies:1,image:"/icons/item-diamond-crystal.png"}
     ];
 
     const $ = (selector) => document.querySelector(selector);
@@ -779,7 +779,7 @@
         if (!skill || skill.kind === "passive") return;
         skillButtons.push(`<button data-action="${skill.id}" ${enabled && canUseSkill(skill) ? "" : "disabled"}><img src="${skill.image}" alt=""><b>${skill.name}</b><small>${actionReason(skill)}</small></button>`);
       });
-      if (hasSkill("cruelty")) skillButtons.push(`<div class="passive-skill-card"><img src="/icons/skill-cruelty.svg" alt=""><b>残忍</b><small>敵撃破時に自動発動</small></div>`);
+      if (hasSkill("cruelty")) skillButtons.push(`<div class="passive-skill-card"><img src="/icons/skill-cruelty.png" alt=""><b>残忍</b><small>敵撃破時に自動発動</small></div>`);
       $("#skillActions").innerHTML = skillButtons.join("");
 
       const consumables = [...new Set(player.itemIds)].map((id) => byId(ITEMS,id)).filter((item) => item && item.kind === "consumable");
