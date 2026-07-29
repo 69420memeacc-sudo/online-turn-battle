@@ -916,17 +916,9 @@ export async function POST(request: Request) {
         amount = stolenHp;
         message = `${active.name}は${target.name}からHP${stolenHp}・MP${stolenMp}を吸引した`;
       } else if (actionId === "thief_life") {
-        const stealableItems = target?.itemList.filter((itemId) => {
-          const item = itemById(itemId);
-          return (
-            item &&
-            (!item.maxCopies ||
-              countItem(active.itemList, itemId) < item.maxCopies)
-          );
-        });
-        if (!target || !stealableItems?.length) {
+        if (!target || !target.itemList.length) {
           return Response.json(
-            { error: "その敵は今の枠へ奪えるアイテムを持っていません。" },
+            { error: "その敵はアイテムを持っていません。" },
             { status: 400 },
           );
         }
@@ -936,8 +928,8 @@ export async function POST(request: Request) {
             { status: 400 },
           );
         }
-        const stolenId = stealableItems[randomIndex(stealableItems.length)];
-        target.itemList.splice(target.itemList.indexOf(stolenId), 1);
+        const stolenIndex = randomIndex(target.itemList.length);
+        const [stolenId] = target.itemList.splice(stolenIndex, 1);
         active.itemList.push(stolenId);
         message = `${active.name}は${target.name}から「${itemById(stolenId)?.name ?? "アイテム"}」を奪った`;
       } else if (actionId === "ruby_crystal") {

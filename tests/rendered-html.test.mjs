@@ -32,6 +32,8 @@ test("ships the Crown & Claw entrance and online game flow", async () => {
   assert.match(route, /death_scythe/);
   assert.match(route, /snow_white_tear/);
   assert.match(route, /diamond_crystal/);
+  assert.match(route, /randomIndex\(target\.itemList\.length\)/);
+  assert.match(route, /target\.itemList\.splice\(stolenIndex, 1\)/);
   assert.match(game, /MP15で自身のHPを22回復/);
   assert.match(page, /同じ編成で再戦/);
   assert.match(page, /装備するには.*武器が必要/);
