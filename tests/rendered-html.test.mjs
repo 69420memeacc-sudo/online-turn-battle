@@ -39,6 +39,8 @@ test("ships the Crown & Claw entrance and updated online game flow", async () =>
   assert.match(game, /poisonMultiplier: 2/);
   assert.match(game, /unlimitedAntidote: true/);
   assert.match(game, /最大HPの50%ダメージ/);
+  assert.match(game, /id: "heavens_scale"[\s\S]{0,300}maxCopies: 1/);
+  assert.match(offline, /id:"heavens_scale"[^\n]*maxCopies:1/);
   assert.match(game, /最初の個人手番には使用できない/);
   assert.match(game, /緑精霊エルザレムの杖なら60%増加/);
   assert.match(route, /turns_taken/);

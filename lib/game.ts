@@ -346,8 +346,9 @@ export const ITEMS: GameItem[] = [
     id: "heavens_scale",
     name: "天国の天秤",
     description:
-      "ランダムな敵とMPを比べ、低い方が自身の最大HPの50%ダメージを受ける。防具を無視する。",
+      "ランダムな敵とMPを比べ、低い方が自身の最大HPの50%ダメージを受ける。防具を無視する。最大1個。",
     kind: "consumable",
+    maxCopies: 1,
     image: "/icons/item-heavens-scale.png",
   },
   {
