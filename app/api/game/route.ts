@@ -949,13 +949,24 @@ export async function POST(request: Request) {
 
       if (actionId === "mend") {
         target = active;
+        const healingPower = 22 + (weapon.healingBonus ?? 0);
         const previousHp = active.hp;
-        active.hp = Math.min(
-          active.max_hp,
-          active.hp + 22 + (weapon.healingBonus ?? 0),
-        );
+        active.hp = Math.min(active.max_hp, active.hp + healingPower);
         amount = active.hp - previousHp;
+        const overflow = Math.max(0, healingPower - amount);
+        const barrierCap = weapon.overhealBarrierCap ?? 0;
+        const previousBarrier = active.barrier;
+        if (barrierCap > 0 && overflow > 0) {
+          active.barrier += Math.min(
+            overflow,
+            Math.max(0, barrierCap - active.barrier),
+          );
+        }
+        const barrierGained = active.barrier - previousBarrier;
         message = `${active.name}は治癒の祈りでHPを${amount}回復した`;
+        if (barrierGained > 0) {
+          message += `。余剰回復が${barrierGained}の防壁に変わった`;
+        }
       } else if (actionId === "guard") {
         target = active;
         const previousBarrier = active.barrier;
@@ -993,8 +1004,8 @@ export async function POST(request: Request) {
             { status: 400 },
           );
         }
-        const stolenHp = Math.min(10, target.hp);
-        const stolenMp = Math.min(15, target.mp);
+        const stolenHp = Math.min(weapon.drainHp ?? 10, target.hp);
+        const stolenMp = Math.min(weapon.drainMp ?? 15, target.mp);
         target.hp -= stolenHp;
         target.mp -= stolenMp;
         active.hp = Math.min(active.max_hp, active.hp + stolenHp);
@@ -1042,8 +1053,10 @@ export async function POST(request: Request) {
             { status: 400 },
           );
         }
-        target.sleep_turns = Math.max(target.sleep_turns, 2);
-        message = `${active.name}は白雪姫の涙を使い、${target.name}を2ターン眠らせた`;
+        const targetWeapon = weaponById(target.weapon_id) ?? WEAPONS[0];
+        const sleepTurns = targetWeapon.sleepTurnsReceived ?? 2;
+        target.sleep_turns = Math.max(target.sleep_turns, sleepTurns);
+        message = `${active.name}は白雪姫の涙を使い、${target.name}を${sleepTurns}ターン眠らせた`;
       } else if (actionId === "poison_potion") {
         if (!target) {
           return Response.json(
@@ -1089,7 +1102,9 @@ export async function POST(request: Request) {
         }
         const automaticPowerStrike = isBasic && weapon.alwaysPowerStrike;
         const powerStrike = actionId === "power_strike" || automaticPowerStrike;
-        let rawDamage = powerStrike ? weapon.damage + 10 : weapon.damage;
+        let rawDamage = powerStrike
+          ? weapon.damage + (weapon.powerStrikeBonus ?? 10)
+          : weapon.damage;
         if (actionId === "golden_arrow") rawDamage = 40;
         if (isBasic || actionId === "power_strike" || actionId === "golden_arrow") {
           const emeraldCount = countItem(active.itemList, "emerald_crystal");
@@ -1112,6 +1127,13 @@ export async function POST(request: Request) {
         if (resultDamage.absorbed) {
           message += `（防壁が${resultDamage.absorbed}吸収）`;
         }
+        if (
+          weapon.barrierAfterAttack &&
+          (isBasic || actionId === "power_strike")
+        ) {
+          active.barrier += weapon.barrierAfterAttack;
+          message += `。騎士の長剣の守りにより防壁${weapon.barrierAfterAttack}を得た（合計${active.barrier}）`;
+        }
       }
 
       if (
@@ -1121,8 +1143,12 @@ export async function POST(request: Request) {
         const itemIndex = active.itemList.indexOf(selectedItem.id);
         if (itemIndex >= 0) active.itemList.splice(itemIndex, 1);
       }
-      if (selectedSkill && selectedSkill.cooldown > 0) {
-        active.cooldownMap[actionId] = selectedSkill.cooldown;
+      if (selectedSkill) {
+        const cooldown =
+          actionId === "drain"
+            ? (weapon.drainCooldown ?? selectedSkill.cooldown)
+            : selectedSkill.cooldown;
+        if (cooldown > 0) active.cooldownMap[actionId] = cooldown;
       }
 
       const defeatedByAction = enemyCandidates.filter(
@@ -1187,6 +1213,13 @@ export async function POST(request: Request) {
           const living = nextTeam === "humans" ? humansAlive : monstersAlive;
           const cursor = nextTeam === "humans" ? humanCursor : monsterCursor;
           const candidate = living[cursor % living.length];
+          const candidateWeapon = weaponById(candidate.weapon_id) ?? WEAPONS[0];
+          if (candidateWeapon.turnStartMpRecovery) {
+            candidate.mp = Math.min(
+              candidate.max_mp,
+              candidate.mp + candidateWeapon.turnStartMpRecovery,
+            );
+          }
 
           if (candidate.poisoned) {
             const poisonDamage = Math.min(candidate.poison_damage, candidate.hp);
@@ -1233,7 +1266,6 @@ export async function POST(request: Request) {
             continue;
           }
 
-          const candidateWeapon = weaponById(candidate.weapon_id) ?? WEAPONS[0];
           if (candidateWeapon.skipsEveryOtherTurn && candidate.giant_sword_wait) {
             candidate.giant_sword_wait = 0;
             candidate.turns_taken += 1;

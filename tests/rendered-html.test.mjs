@@ -55,6 +55,20 @@ test("ships the Crown & Claw entrance and updated online game flow", async () =>
   assert.match(offline, /maxHpOverride:200/);
   assert.match(offline, /unlimitedAntidote:true/);
   assert.match(offline, /turnsTaken/);
+  assert.match(game, /maxHpOverride: 120/);
+  assert.match(game, /powerStrikeBonus: 15/);
+  assert.match(game, /barrierAfterAttack: 6/);
+  assert.match(game, /sleepTurnsReceived: 1/);
+  assert.match(game, /turnStartMpRecovery: 10/);
+  assert.match(game, /overhealBarrierCap: 18/);
+  assert.match(game, /drainHp: 15/);
+  assert.match(game, /drainMp: 25/);
+  assert.match(game, /drainCooldown: 2/);
+  assert.match(route, /weapon\.barrierAfterAttack/);
+  assert.match(route, /targetWeapon\.sleepTurnsReceived/);
+  assert.match(route, /candidateWeapon\.turnStartMpRecovery/);
+  assert.match(offline, /barrierAfterAttack:6/);
+  assert.match(offline, /turnStartMpRecovery:10/);
 });
 
 test("includes production assets and generated migrations", async () => {

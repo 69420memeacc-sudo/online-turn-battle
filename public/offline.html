@@ -321,9 +321,9 @@
     const DEFAULT_ITEMS = ["ruby_crystal", "sapphire_crystal"];
 
     const WEAPONS = [
-      {id:"longsword",name:"騎士の長剣",description:"癖がなく、安定して高い一撃を与える。",damage:18,type:"sword",image:"/icons/weapon-longsword.png"},
+      {id:"longsword",name:"騎士の長剣",description:"攻18・最大HP120。攻撃後に防壁6を無制限に積み、渾身撃は攻33。睡眠を1ターンに軽減。",damage:18,type:"sword",maxHpOverride:120,powerStrikeBonus:15,barrierAfterAttack:6,sleepTurnsReceived:1,image:"/icons/weapon-longsword.png"},
       {id:"longbow",name:"灰木の長弓",description:"黄金の光矢と神の矢を放てる、狩人の長弓。",damage:16,type:"bow",image:"/icons/weapon-longbow.png"},
-      {id:"oakstaff",name:"古樫の杖",description:"基礎最大MPが200になり、吸引を使用できる。",damage:12,type:"staff",healingBonus:8,image:"/icons/weapon-oakstaff.png"},
+      {id:"oakstaff",name:"古樫の杖",description:"攻12・基礎最大MP200。毎手番MP10回復。治癒38＋余剰防壁18、吸引HP15・MP25・再使用2。",damage:12,type:"staff",healingBonus:16,turnStartMpRecovery:10,overhealBarrierCap:18,drainHp:15,drainMp:25,drainCooldown:2,image:"/icons/weapon-oakstaff.png"},
       {id:"ancient_rapier",name:"古代のレイピア",description:"攻20。通常攻撃が防具とダイヤモンド結晶を無視。渾身撃は使用不可。",damage:20,type:"sword",forbidsPowerStrike:true,ignoresDefense:true,image:"/icons/weapon-ancient-rapier.png"},
       {id:"demon_twin_blades",name:"妖魔双刀",description:"攻13。同じ手番で2回行動。最大HP・MPが20%低下し、渾身撃は使用不可。",damage:13,type:"sword",maxStatMultiplier:.8,forbidsPowerStrike:true,actionsPerTurn:2,image:"/icons/weapon-demon-twin-blades.png"},
       {id:"giant_sword",name:"巨人の剣",description:"攻35・最大HP200。基本攻撃が毎回渾身撃（攻45）になるが、次の自分の手番を休む。",damage:35,type:"sword",maxHpOverride:200,alwaysPowerStrike:true,skipsEveryOtherTurn:true,image:"/icons/weapon-giant-sword.png"},
@@ -564,6 +564,15 @@
       battle.botTurnStarted = false;
       battle.extraAction = false;
       tickCooldowns();
+      if (battle.player.weapon.turnStartMpRecovery) {
+        const previousMp = battle.player.mp;
+        battle.player.mp = Math.min(
+          battle.player.maxMp,
+          battle.player.mp + battle.player.weapon.turnStartMpRecovery,
+        );
+        const recovered = battle.player.mp - previousMp;
+        if (recovered > 0) addLog(`${battle.player.weapon.name}によりMPを${recovered}回復した`);
+      }
       if (poisonTick(battle.player)) return finish("bot");
       if (battle.player.sleepTurns > 0) {
         battle.player.sleepTurns -= 1;
@@ -626,8 +635,9 @@
         battle.player.poisonDamage = 1 + Math.floor(.1 * level);
         addLog(`${battle.bot.name}のポイズンブレス。${battle.player.name}に${result.dealt}ダメージ、毎ターン${battle.player.poisonDamage}の毒を付与`);
       } else {
-        battle.player.sleepTurns = Math.max(battle.player.sleepTurns, 2);
-        addLog(`${battle.bot.name}の眠りの息。${battle.player.name}を2ターン眠らせた`);
+        const sleepTurns = battle.player.weapon.sleepTurnsReceived || 2;
+        battle.player.sleepTurns = Math.max(battle.player.sleepTurns, sleepTurns);
+        addLog(`${battle.bot.name}の眠りの息。${battle.player.name}を${sleepTurns}ターン眠らせた`);
       }
       if (battle.player.hp <= 0) return finish("bot");
       passToPlayer();
@@ -652,10 +662,15 @@
 
       if (actionId === "basic") {
         const automaticPower = player.weapon.alwaysPowerStrike;
-        let raw = automaticPower ? player.weapon.damage + 10 : player.weapon.damage;
+        const powerBonus = player.weapon.powerStrikeBonus || 10;
+        let raw = automaticPower ? player.weapon.damage + powerBonus : player.weapon.damage;
         raw = Math.floor(raw * emeraldFactor());
         const result = damage(bot, raw, {ignoreDefense:Boolean(player.weapon.ignoresDefense)});
         message = `${player.name}の${automaticPower ? `${player.weapon.name}の渾身撃` : `${player.weapon.name}の攻撃`}。${bot.name}に${result.dealt}ダメージ`;
+        if (player.weapon.barrierAfterAttack) {
+          player.barrier += player.weapon.barrierAfterAttack;
+          message += `。騎士の長剣の守りにより防壁${player.weapon.barrierAfterAttack}を得た（合計${player.barrier}）`;
+        }
       } else if (selectedSkill) {
         if (!canUseSkill(selectedSkill) || selectedSkill.kind === "passive") return;
         const spentAllMp = selectedSkill.consumeAllMp ? player.mp : 0;
@@ -664,11 +679,25 @@
         player.hp -= selectedSkill.hpCost || 0;
 
         if (actionId === "power_strike") {
-          const result = damage(bot, Math.floor((player.weapon.damage + 10) * emeraldFactor()));
+          const powerBonus = player.weapon.powerStrikeBonus || 10;
+          const result = damage(bot, Math.floor((player.weapon.damage + powerBonus) * emeraldFactor()));
           message = `${player.name}の渾身撃。${bot.name}に${result.dealt}ダメージ`;
+          if (player.weapon.barrierAfterAttack) {
+            player.barrier += player.weapon.barrierAfterAttack;
+            message += `。騎士の長剣の守りにより防壁${player.weapon.barrierAfterAttack}を得た（合計${player.barrier}）`;
+          }
         } else if (actionId === "mend") {
-          const amount = heal(player, 22 + (player.weapon.healingBonus || 0));
+          const healingPower = 22 + (player.weapon.healingBonus || 0);
+          const amount = heal(player, healingPower);
+          const overflow = Math.max(0, healingPower - amount);
+          const barrierCap = player.weapon.overhealBarrierCap || 0;
+          const previousBarrier = player.barrier;
+          if (barrierCap > 0 && overflow > 0) {
+            player.barrier += Math.min(overflow, Math.max(0, barrierCap - player.barrier));
+          }
+          const barrierGained = player.barrier - previousBarrier;
           message = `${player.name}は治癒の祈りでHPを${amount}回復した`;
+          if (barrierGained > 0) message += `。余剰回復が${barrierGained}の防壁に変わった`;
         } else if (actionId === "guard") {
           const previous = player.barrier;
           player.barrier = Math.min(36, player.barrier + 18);
@@ -684,14 +713,18 @@
           const result = damage(bot, 999);
           message = `${player.name}は死神の鎌を召喚し、${bot.name}に${result.dealt}ダメージ`;
         } else if (actionId === "drain") {
-          const stolenHp = Math.min(10, bot.hp);
+          const stolenHp = Math.min(player.weapon.drainHp || 10, bot.hp);
+          const stolenMp = Math.min(player.weapon.drainMp || 15, bot.mp);
           bot.hp -= stolenHp;
+          bot.mp -= stolenMp;
           player.hp = Math.min(player.maxHp, player.hp + stolenHp);
-          message = `${player.name}は${bot.name}からHP${stolenHp}を吸引した`;
+          player.mp = Math.min(player.maxMp, player.mp + stolenMp);
+          message = `${player.name}は${bot.name}からHP${stolenHp}・MP${stolenMp}を吸引した`;
         } else if (actionId === "thief_life") {
           message = `${bot.name}はアイテムを持っていない。盗賊の生き方は空振りに終わった`;
         }
-        if (selectedSkill.cooldown > 0) player.cooldowns[selectedSkill.id] = selectedSkill.cooldown;
+        const cooldown = actionId === "drain" ? (player.weapon.drainCooldown || selectedSkill.cooldown) : selectedSkill.cooldown;
+        if (cooldown > 0) player.cooldowns[selectedSkill.id] = cooldown;
       } else if (selectedItem) {
         const infiniteAntidote = actionId === "antidote_potion" && player.weapon.unlimitedAntidote;
         if ((!player.itemIds.includes(actionId) && !infiniteAntidote) || selectedItem.kind === "passive") return;

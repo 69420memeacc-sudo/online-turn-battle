@@ -23,6 +23,14 @@ export type Weapon = {
   ignoresSkillRestrictions?: boolean;
   poisonMultiplier?: number;
   unlimitedAntidote?: boolean;
+  powerStrikeBonus?: number;
+  barrierAfterAttack?: number;
+  sleepTurnsReceived?: number;
+  turnStartMpRecovery?: number;
+  overhealBarrierCap?: number;
+  drainHp?: number;
+  drainMp?: number;
+  drainCooldown?: number;
 };
 
 export type Armor = {
@@ -82,11 +90,16 @@ export const WEAPONS: Weapon[] = [
   {
     id: "longsword",
     name: "騎士の長剣",
-    description: "癖がなく、安定して高い一撃を与える。",
+    description:
+      "攻18・最大HP120。基本攻撃または渾身撃の後に防壁6を得て、何度でも積み重ねられる。渾身撃は攻33。受ける睡眠を1ターンに軽減する。",
     damage: 18,
     type: "sword",
     icon: "⚔",
     image: "/icons/weapon-longsword.png",
+    maxHpOverride: 120,
+    powerStrikeBonus: 15,
+    barrierAfterAttack: 6,
+    sleepTurnsReceived: 1,
   },
   {
     id: "longbow",
@@ -100,12 +113,18 @@ export const WEAPONS: Weapon[] = [
   {
     id: "oakstaff",
     name: "古樫の杖",
-    description: "基礎最大MPが200になり、吸引を使用できる。",
+    description:
+      "攻12・基礎最大MP200。個人手番開始時にMP10回復。治癒の祈りは38回復し、余剰回復を最大18の防壁に変換。吸引はHP15・MP25、再使用2手番。",
     damage: 12,
     type: "staff",
-    healingBonus: 8,
+    healingBonus: 16,
     icon: "✦",
     image: "/icons/weapon-oakstaff.png",
+    turnStartMpRecovery: 10,
+    overhealBarrierCap: 18,
+    drainHp: 15,
+    drainMp: 25,
+    drainCooldown: 2,
   },
   {
     id: "ancient_rapier",
