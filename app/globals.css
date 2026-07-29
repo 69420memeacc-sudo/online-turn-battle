@@ -1,0 +1,1247 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #e9e2d2;
+  --muted: #9f9a90;
+  --paper: #171817;
+  --panel: #1d1e1d;
+  --panel-2: #242522;
+  --line: rgba(222, 210, 184, 0.14);
+  --gold: #c7a664;
+  --gold-bright: #e0c782;
+  --human: #648bb9;
+  --human-dark: #263c58;
+  --monster: #a85956;
+  --monster-dark: #512628;
+  --danger: #d96b5f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: #101110;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 20% 0%, rgba(62, 82, 103, 0.25), transparent 32rem),
+    radial-gradient(circle at 85% 12%, rgba(111, 47, 50, 0.2), transparent 30rem),
+    linear-gradient(rgba(255, 255, 255, 0.016) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+    #111211;
+  background-size: auto, auto, 36px 36px, 36px 36px, auto;
+  font-family: Arial, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 3px;
+}
+
+.game-shell {
+  width: min(1480px, 100%);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 0 34px;
+}
+
+.game-header {
+  height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.brand-crown {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  color: var(--gold);
+  border: 1px solid rgba(199, 166, 100, 0.45);
+  transform: rotate(45deg);
+}
+
+.brand-crown::first-letter {
+  transform: rotate(-45deg);
+}
+
+.brand > span:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 21px;
+  letter-spacing: 0.15em;
+  line-height: 1;
+}
+
+.brand strong i {
+  color: var(--gold);
+  font-weight: 400;
+}
+
+.brand small {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+
+.header-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #858a84;
+  font: 600 10px/1 Arial, sans-serif;
+  letter-spacing: 0.18em;
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #6e9d76;
+  box-shadow: 0 0 10px rgba(110, 157, 118, 0.6);
+}
+
+.error-banner {
+  position: fixed;
+  z-index: 20;
+  top: 102px;
+  left: 50%;
+  display: flex;
+  width: min(560px, calc(100% - 32px));
+  align-items: center;
+  gap: 12px;
+  padding: 13px 15px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(217, 107, 95, 0.55);
+  background: rgba(68, 28, 27, 0.96);
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.36);
+  color: #f3d5d0;
+  font-size: 13px;
+}
+
+.error-banner > span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-weight: 800;
+}
+
+.error-banner button {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.entrance {
+  display: grid;
+  min-height: calc(100vh - 144px);
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.65fr);
+  align-items: center;
+  gap: clamp(56px, 8vw, 130px);
+  padding: 68px clamp(20px, 5vw, 76px);
+}
+
+.eyebrow {
+  margin: 0 0 20px;
+  color: var(--gold);
+  font: 700 10px/1 Arial, sans-serif;
+  letter-spacing: 0.28em;
+}
+
+.entrance-copy h1,
+.lobby-topline h1,
+.battle-heading h1 {
+  margin: 0;
+  font-family: Georgia, "Yu Mincho", serif;
+  font-weight: 400;
+  letter-spacing: 0.015em;
+}
+
+.entrance-copy h1 {
+  max-width: 750px;
+  font-size: clamp(42px, 5.3vw, 76px);
+  line-height: 1.15;
+}
+
+.entrance-copy h1 em {
+  color: var(--gold-bright);
+  font-style: normal;
+}
+
+.lead {
+  max-width: 640px;
+  margin: 30px 0 0;
+  color: #b9b5ac;
+  font-family: "Yu Mincho", serif;
+  font-size: 15px;
+  line-height: 2;
+}
+
+.feature-row {
+  display: flex;
+  gap: 30px;
+  margin-top: 46px;
+  color: #8f928d;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.feature-row span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.feature-row b {
+  display: grid;
+  width: 29px;
+  height: 29px;
+  place-items: center;
+  border: 1px solid var(--line);
+  color: var(--gold);
+  font: 600 9px/1 Arial, sans-serif;
+}
+
+.gate-panel,
+.loadout-panel,
+.roster-panel,
+.action-panel,
+.battle-log {
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.025), transparent 40%),
+    rgba(26, 27, 25, 0.92);
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.3);
+}
+
+.gate-panel {
+  padding: 28px;
+}
+
+.gate-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 26px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--line);
+}
+
+.gate-heading span {
+  font-family: "Yu Mincho", serif;
+  font-size: 18px;
+}
+
+.gate-heading small,
+.roster-panel .section-heading > small {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+}
+
+.gate-panel label,
+.target-select {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.gate-panel input,
+.join-row input,
+.target-select select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: #121312;
+  color: var(--ink);
+}
+
+.gate-panel input,
+.join-row input {
+  height: 48px;
+  padding: 0 14px;
+}
+
+.gate-panel fieldset {
+  margin: 22px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.gate-panel legend {
+  margin-bottom: 9px;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.team-choice {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.team-choice button {
+  display: grid;
+  min-height: 104px;
+  grid-template-columns: 42px 1fr;
+  grid-template-rows: 1fr 1fr;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: #141514;
+  cursor: pointer;
+  text-align: left;
+}
+
+.team-choice button.selected.humans {
+  border-color: rgba(100, 139, 185, 0.75);
+  background: linear-gradient(135deg, rgba(43, 74, 109, 0.65), #171918);
+}
+
+.team-choice button.selected.monsters {
+  border-color: rgba(168, 89, 86, 0.75);
+  background: linear-gradient(135deg, rgba(92, 39, 42, 0.65), #191717);
+}
+
+.team-choice .sigil {
+  grid-row: 1 / 3;
+  color: var(--gold);
+  font-size: 28px;
+}
+
+.team-choice b {
+  align-self: end;
+  font-family: "Yu Mincho", serif;
+  font-size: 14px;
+}
+
+.team-choice small {
+  align-self: start;
+  margin-top: 5px;
+  color: #8d8e89;
+  font-size: 9px;
+}
+
+.primary-action {
+  width: 100%;
+  min-height: 51px;
+  margin-top: 18px;
+  border: 1px solid #d1b976;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
+    #947636;
+  color: #fff6de;
+  cursor: pointer;
+  font-family: "Yu Mincho", serif;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.primary-action:disabled,
+.start-battle:disabled,
+.join-row button:disabled,
+.action-grid button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.7);
+  opacity: 0.42;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: #777a75;
+  font-size: 9px;
+}
+
+.divider::before,
+.divider::after {
+  height: 1px;
+  flex: 1;
+  background: var(--line);
+  content: "";
+}
+
+.join-row {
+  display: grid;
+  grid-template-columns: 1fr 86px;
+  gap: 8px;
+}
+
+.join-row input {
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.join-row button {
+  border: 1px solid rgba(199, 166, 100, 0.44);
+  background: transparent;
+  color: var(--gold-bright);
+  cursor: pointer;
+}
+
+.lobby,
+.battlefield {
+  padding: 54px 0 70px;
+}
+
+.lobby-topline,
+.battle-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  margin-bottom: 34px;
+}
+
+.lobby-topline h1,
+.battle-heading h1 {
+  font-size: clamp(34px, 4vw, 52px);
+}
+
+.lobby-topline > div:first-child > p:last-child {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.room-code-box {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 3px 18px;
+  padding: 15px 18px;
+  border: 1px solid var(--line);
+  background: rgba(18, 19, 18, 0.8);
+}
+
+.room-code-box small {
+  grid-column: 1;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+}
+
+.room-code-box strong {
+  grid-column: 1;
+  color: var(--gold-bright);
+  font: 600 25px/1.1 Georgia, serif;
+  letter-spacing: 0.16em;
+}
+
+.room-code-box button {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  padding: 10px 13px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: #aba99f;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.lobby-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  align-items: start;
+  gap: 22px;
+}
+
+.loadout-panel,
+.roster-panel {
+  padding: 26px;
+}
+
+.section-heading,
+.action-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.section-heading span,
+.action-topline > div > span,
+.log-heading span {
+  color: var(--gold);
+  font: 700 8px/1 Arial, sans-serif;
+  letter-spacing: 0.22em;
+}
+
+.section-heading h2,
+.action-topline h2 {
+  margin: 6px 0 0;
+  font-family: "Yu Mincho", serif;
+  font-size: 21px;
+  font-weight: 500;
+}
+
+.slots {
+  color: #9d9f99;
+  font-size: 11px;
+}
+
+.slots b {
+  color: var(--gold-bright);
+  font: 500 24px/1 Georgia, serif;
+}
+
+.slots.over,
+.slots.over b {
+  color: var(--danger);
+}
+
+.loadout-group {
+  margin-top: 24px;
+}
+
+.loadout-group h3 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 10px;
+  color: #b9b7ae;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.loadout-group h3 span {
+  color: var(--gold);
+  font: 600 9px/1 Arial, sans-serif;
+}
+
+.item-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.item-card {
+  position: relative;
+  display: grid;
+  min-height: 105px;
+  grid-template-columns: 42px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 13px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: rgba(16, 17, 16, 0.7);
+  cursor: pointer;
+  text-align: left;
+}
+
+.item-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: transparent;
+  content: "";
+}
+
+.item-card.selected {
+  border-color: rgba(199, 166, 100, 0.58);
+  background: linear-gradient(120deg, rgba(116, 91, 40, 0.25), rgba(18, 19, 18, 0.8));
+}
+
+.item-card.selected::before {
+  background: var(--gold-bright);
+}
+
+.item-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  color: var(--gold-bright);
+  border: 1px solid var(--line);
+  background: #181918;
+  font-family: Georgia, serif;
+  font-size: 21px;
+}
+
+.item-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.item-copy b {
+  font-family: "Yu Mincho", serif;
+  font-size: 12px;
+}
+
+.item-copy small {
+  margin-top: 6px;
+  color: #858781;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.item-stat {
+  align-self: start;
+  color: #c9c5ba;
+  font: 600 10px/1 Arial, sans-serif;
+}
+
+.item-stat i {
+  display: block;
+  margin-top: 8px;
+  color: #747872;
+  font-size: 8px;
+  font-style: normal;
+}
+
+.loadout-save {
+  width: min(360px, 100%);
+  margin-top: 27px;
+}
+
+.roster-panel {
+  position: sticky;
+  top: 18px;
+}
+
+.roster-team {
+  margin-top: 20px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  background: #171817;
+}
+
+.roster-team.humans {
+  border-top-color: rgba(100, 139, 185, 0.72);
+}
+
+.roster-team.monsters {
+  border-top-color: rgba(168, 89, 86, 0.72);
+}
+
+.roster-team h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 13px;
+  font-family: "Yu Mincho", serif;
+  font-size: 13px;
+}
+
+.roster-team h3 > span {
+  color: var(--gold);
+  font-size: 18px;
+}
+
+.roster-team h3 small {
+  margin-left: auto;
+  color: var(--muted);
+  font: 500 9px/1 Arial, sans-serif;
+}
+
+.roster-player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 11px;
+}
+
+.roster-player small {
+  color: #777a75;
+  font-size: 9px;
+}
+
+.roster-player small.ready {
+  color: #85a98b;
+}
+
+.empty-roster {
+  margin: 10px 0 0;
+  color: #666964;
+  font-size: 10px;
+}
+
+.start-battle {
+  display: grid;
+  width: 100%;
+  min-height: 78px;
+  grid-template-columns: 44px 1fr;
+  grid-template-rows: 1fr 1fr;
+  align-items: center;
+  margin-top: 20px;
+  padding: 14px;
+  border: 1px solid rgba(199, 166, 100, 0.62);
+  background: linear-gradient(135deg, #8e7035, #5e4928);
+  cursor: pointer;
+  text-align: left;
+  font-family: "Yu Mincho", serif;
+  font-weight: 700;
+}
+
+.start-battle > span {
+  grid-row: 1 / 3;
+  font-size: 25px;
+}
+
+.start-battle small {
+  color: rgba(255, 255, 255, 0.6);
+  font-family: Arial, sans-serif;
+  font-size: 8px;
+  font-weight: 400;
+}
+
+.waiting-host {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px dashed var(--line);
+  color: #7f827c;
+  text-align: center;
+  font-size: 10px;
+}
+
+.battle-heading {
+  margin-bottom: 24px;
+}
+
+.turn-counter {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.turn-counter small {
+  color: var(--gold);
+  font: 700 9px/1 Arial, sans-serif;
+  letter-spacing: 0.2em;
+}
+
+.turn-counter strong {
+  font: 400 42px/1 Georgia, serif;
+}
+
+.arena {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 62px 1fr;
+  gap: 18px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(90deg, rgba(38, 60, 88, 0.24), transparent 45%, transparent 55%, rgba(81, 38, 40, 0.25)),
+    radial-gradient(ellipse at center, rgba(199, 166, 100, 0.08), transparent 48%),
+    #151615;
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.35);
+}
+
+.army {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+}
+
+.army-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 4px;
+  color: #c8c5bb;
+  font-family: "Yu Mincho", serif;
+  font-size: 12px;
+}
+
+.army-title > span {
+  color: var(--gold);
+  font-size: 19px;
+}
+
+.army-title small {
+  margin-left: auto;
+  color: #686c67;
+  font: 600 8px/1 Arial, sans-serif;
+  letter-spacing: 0.15em;
+}
+
+.fighter-card {
+  position: relative;
+  min-height: 112px;
+  padding: 18px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: rgba(21, 22, 21, 0.9);
+  transition: border-color 180ms ease, transform 180ms ease;
+}
+
+.fighter-card.humans::before,
+.fighter-card.monsters::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  content: "";
+}
+
+.fighter-card.humans::before {
+  background: var(--human);
+}
+
+.fighter-card.monsters::before {
+  background: var(--monster);
+}
+
+.fighter-card.active {
+  transform: translateY(-2px);
+  border-color: rgba(224, 199, 130, 0.65);
+  box-shadow: 0 0 28px rgba(199, 166, 100, 0.12);
+}
+
+.fighter-card.defeated {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.fighter-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fighter-name {
+  font-family: "Yu Mincho", serif;
+  font-size: 15px;
+}
+
+.fighter-name small {
+  margin-left: 8px;
+  padding: 3px 5px;
+  border: 1px solid var(--line);
+  color: var(--gold);
+  font: 500 7px/1 Arial, sans-serif;
+}
+
+.fighter-hp {
+  color: #d4d0c6;
+  font: 500 12px/1 Georgia, serif;
+}
+
+.hp-track {
+  height: 6px;
+  margin-top: 13px;
+  overflow: hidden;
+  background: #0d0e0d;
+}
+
+.hp-track span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #7f332f, #b86155);
+  transition: width 280ms ease;
+}
+
+.fighter-card.humans .hp-track span {
+  background: linear-gradient(90deg, #304a69, #648bb9);
+}
+
+.fighter-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 13px;
+  color: #878983;
+  font-size: 9px;
+}
+
+.fighter-meta .barrier {
+  color: #8eadd0;
+}
+
+.turn-ribbon {
+  position: absolute;
+  top: 8px;
+  right: -28px;
+  width: 90px;
+  padding: 3px 0;
+  transform: rotate(35deg);
+  background: var(--gold);
+  color: #1d1a13;
+  text-align: center;
+  font-size: 7px;
+  font-weight: 800;
+}
+
+.versus-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8f7950;
+  font-family: Georgia, serif;
+  font-size: 26px;
+}
+
+.versus-mark span,
+.versus-mark i {
+  font-style: normal;
+}
+
+.versus-mark i {
+  margin-top: 22px;
+}
+
+.battle-console {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.action-panel,
+.battle-log {
+  padding: 22px;
+}
+
+.target-select {
+  flex-direction: row;
+  align-items: center;
+}
+
+.target-select select {
+  width: auto;
+  min-width: 140px;
+  padding: 9px;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 17px;
+}
+
+.action-grid button {
+  display: grid;
+  min-height: 93px;
+  grid-template-columns: 36px 1fr;
+  grid-template-rows: 1fr 1fr;
+  align-items: center;
+  gap: 0 10px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  background: #151615;
+  cursor: pointer;
+  text-align: left;
+}
+
+.action-grid button:hover:not(:disabled) {
+  border-color: rgba(199, 166, 100, 0.6);
+  background: rgba(99, 77, 37, 0.18);
+}
+
+.action-grid button > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  grid-row: 1 / 3;
+  place-items: center;
+  color: var(--gold-bright);
+  border: 1px solid var(--line);
+  font-family: Georgia, serif;
+  font-size: 18px;
+}
+
+.action-grid button b {
+  align-self: end;
+  font-family: "Yu Mincho", serif;
+  font-size: 11px;
+}
+
+.action-grid button small {
+  align-self: start;
+  margin-top: 4px;
+  overflow: hidden;
+  color: #767973;
+  font-size: 8px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+}
+
+.log-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--line);
+}
+
+.log-heading b {
+  font-family: "Yu Mincho", serif;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.log-list {
+  max-height: 183px;
+  overflow-y: auto;
+}
+
+.log-list p {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  gap: 7px;
+  margin: 0;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  color: #aaa89f;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.log-list p small {
+  color: var(--gold);
+  font: 600 7px/1.4 Arial, sans-serif;
+}
+
+.log-list .log-empty {
+  display: block;
+  color: #777a75;
+}
+
+.victory-banner {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 18px;
+  padding: 22px 26px;
+  border: 1px solid rgba(199, 166, 100, 0.5);
+  background: linear-gradient(90deg, rgba(101, 81, 42, 0.55), rgba(28, 29, 27, 0.94));
+}
+
+.victory-banner > span {
+  color: var(--gold-bright);
+  font-size: 34px;
+}
+
+.victory-banner > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.victory-banner small {
+  color: var(--gold);
+  font: 700 8px/1 Arial, sans-serif;
+  letter-spacing: 0.25em;
+}
+
+.victory-banner strong {
+  margin-top: 5px;
+  font-family: "Yu Mincho", serif;
+  font-size: 24px;
+}
+
+.victory-banner button {
+  margin-left: auto;
+  padding: 11px 17px;
+  border: 1px solid var(--line);
+  background: transparent;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+footer {
+  display: flex;
+  height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  color: #666964;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+}
+
+@media (max-width: 1050px) {
+  .entrance {
+    grid-template-columns: 1fr 400px;
+    gap: 45px;
+    padding-inline: 10px;
+  }
+
+  .lobby-grid,
+  .battle-console {
+    grid-template-columns: 1fr;
+  }
+
+  .roster-panel {
+    position: static;
+  }
+
+  .item-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .roster-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .roster-panel > .section-heading,
+  .roster-panel > .start-battle,
+  .roster-panel > .waiting-host {
+    grid-column: 1 / 3;
+  }
+}
+
+@media (max-width: 760px) {
+  .game-shell {
+    padding: 0 16px;
+  }
+
+  .game-header {
+    height: 74px;
+  }
+
+  .brand-crown,
+  .header-status {
+    display: none;
+  }
+
+  .entrance {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    padding: 48px 0;
+  }
+
+  .entrance-copy h1 {
+    font-size: 40px;
+  }
+
+  .feature-row {
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .gate-panel,
+  .loadout-panel,
+  .roster-panel,
+  .action-panel,
+  .battle-log {
+    padding: 18px;
+  }
+
+  .lobby-topline,
+  .battle-heading {
+    align-items: start;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .room-code-box {
+    width: 100%;
+  }
+
+  .roster-panel {
+    display: block;
+  }
+
+  .roster-panel > .start-battle,
+  .roster-panel > .waiting-host {
+    margin-top: 18px;
+  }
+
+  .arena {
+    grid-template-columns: 1fr;
+    padding: 18px;
+  }
+
+  .versus-mark {
+    height: 30px;
+  }
+
+  .versus-mark i {
+    margin-top: 0;
+    margin-left: 5px;
+  }
+
+  .action-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  footer {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+  }
+}
+
+@media (max-width: 430px) {
+  .team-choice {
+    grid-template-columns: 1fr;
+  }
+
+  .join-row {
+    grid-template-columns: 1fr;
+  }
+
+  .join-row button {
+    height: 44px;
+  }
+
+  .action-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
