@@ -15,6 +15,7 @@ export type Weapon = {
   maxHpOverride?: number;
   forbidsPowerStrike?: boolean;
   ignoresDefense?: boolean;
+  ignoresBarrier?: boolean;
   actionsPerTurn?: number;
   skipsEveryOtherTurn?: boolean;
   alwaysPowerStrike?: boolean;
@@ -130,13 +131,14 @@ export const WEAPONS: Weapon[] = [
     id: "ancient_rapier",
     name: "古代のレイピア",
     description:
-      "攻20。通常攻撃が防具とダイヤモンド結晶を無視するが、渾身撃は使えない。",
+      "攻20。通常攻撃が防具・ダイヤモンド結晶・防壁を無視するが、渾身撃は使えない。",
     damage: 20,
     type: "sword",
     icon: "†",
     image: "/icons/weapon-ancient-rapier.png",
     forbidsPowerStrike: true,
     ignoresDefense: true,
+    ignoresBarrier: true,
   },
   {
     id: "demon_twin_blades",

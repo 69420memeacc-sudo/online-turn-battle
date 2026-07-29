@@ -66,6 +66,10 @@ test("ships the Crown & Claw entrance and updated online game flow", async () =>
   assert.match(game, /drainHp: 15/);
   assert.match(game, /drainMp: 25/);
   assert.match(game, /drainCooldown: 2/);
+  assert.match(game, /ignoresBarrier: true/);
+  assert.match(route, /weapon\.ignoresBarrier/);
+  assert.match(offline, /ignoresBarrier:true/);
+  assert.match(route, /options\.ignoreBarrier/);
   assert.match(route, /weapon\.barrierAfterAttack/);
   assert.match(route, /targetWeapon\.sleepTurnsReceived/);
   assert.match(route, /candidateWeapon\.turnStartMpRecovery/);

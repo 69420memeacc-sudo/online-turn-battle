@@ -324,7 +324,7 @@
       {id:"longsword",name:"騎士の長剣",description:"攻18・最大HP120。攻撃後に防壁6を無制限に積み、渾身撃は攻33。睡眠を1ターンに軽減。",damage:18,type:"sword",maxHpOverride:120,powerStrikeBonus:15,barrierAfterAttack:6,sleepTurnsReceived:1,image:"/icons/weapon-longsword.png"},
       {id:"longbow",name:"灰木の長弓",description:"黄金の光矢と神の矢を放てる、狩人の長弓。",damage:16,type:"bow",image:"/icons/weapon-longbow.png"},
       {id:"oakstaff",name:"古樫の杖",description:"攻12・基礎最大MP200。毎手番MP10回復。治癒38＋余剰防壁18、吸引HP15・MP25・再使用2。",damage:12,type:"staff",healingBonus:16,turnStartMpRecovery:10,overhealBarrierCap:18,drainHp:15,drainMp:25,drainCooldown:2,image:"/icons/weapon-oakstaff.png"},
-      {id:"ancient_rapier",name:"古代のレイピア",description:"攻20。通常攻撃が防具とダイヤモンド結晶を無視。渾身撃は使用不可。",damage:20,type:"sword",forbidsPowerStrike:true,ignoresDefense:true,image:"/icons/weapon-ancient-rapier.png"},
+      {id:"ancient_rapier",name:"古代のレイピア",description:"攻20。通常攻撃が防具・ダイヤモンド結晶・防壁を無視。渾身撃は使用不可。",damage:20,type:"sword",forbidsPowerStrike:true,ignoresDefense:true,ignoresBarrier:true,image:"/icons/weapon-ancient-rapier.png"},
       {id:"demon_twin_blades",name:"妖魔双刀",description:"攻13。同じ手番で2回行動。最大HP・MPが20%低下し、渾身撃は使用不可。",damage:13,type:"sword",maxStatMultiplier:.8,forbidsPowerStrike:true,actionsPerTurn:2,image:"/icons/weapon-demon-twin-blades.png"},
       {id:"giant_sword",name:"巨人の剣",description:"攻35・最大HP200。基本攻撃が毎回渾身撃（攻45）になるが、次の自分の手番を休む。",damage:35,type:"sword",maxHpOverride:200,alwaysPowerStrike:true,skipsEveryOtherTurn:true,image:"/icons/weapon-giant-sword.png"},
       {id:"elzarem_staff",name:"緑精霊エルザレムの杖",description:"攻8。基礎最大MP200。エメラルド結晶1個につき攻撃倍率1.6倍。",damage:8,type:"staff",emeraldMultiplier:1.6,image:"/icons/weapon-elzarem-staff.png"},
@@ -529,8 +529,8 @@
         if (!options.ignoreArmor) result = Math.max(1, result - target.armor.defense);
         if (target.itemIds && target.itemIds.includes("diamond_crystal")) result = Math.floor(result * .8);
       }
-      const absorbed = Math.min(target.barrier || 0, result);
-      target.barrier = Math.max(0, (target.barrier || 0) - absorbed);
+      const absorbed = options.ignoreBarrier ? 0 : Math.min(target.barrier || 0, result);
+      if (!options.ignoreBarrier) target.barrier = Math.max(0, (target.barrier || 0) - absorbed);
       result -= absorbed;
       if (!options.ignoreDefense && target.itemIds && target.itemIds.includes("diamond_crystal")) result = Math.min(50, result);
       target.hp = Math.max(0, target.hp - result);
@@ -665,7 +665,7 @@
         const powerBonus = player.weapon.powerStrikeBonus || 10;
         let raw = automaticPower ? player.weapon.damage + powerBonus : player.weapon.damage;
         raw = Math.floor(raw * emeraldFactor());
-        const result = damage(bot, raw, {ignoreDefense:Boolean(player.weapon.ignoresDefense)});
+        const result = damage(bot, raw, {ignoreDefense:Boolean(player.weapon.ignoresDefense),ignoreBarrier:Boolean(player.weapon.ignoresBarrier)});
         message = `${player.name}の${automaticPower ? `${player.weapon.name}の渾身撃` : `${player.weapon.name}の攻撃`}。${bot.name}に${result.dealt}ダメージ`;
         if (player.weapon.barrierAfterAttack) {
           player.barrier += player.weapon.barrierAfterAttack;

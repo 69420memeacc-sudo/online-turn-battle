@@ -462,7 +462,11 @@ function validateItems(itemIds: string[]) {
 function damagePlayer(
   target: BattlePlayer,
   rawDamage: number,
-  options: { ignoreDefense?: boolean; ignoreArmor?: boolean } = {},
+  options: {
+    ignoreDefense?: boolean;
+    ignoreArmor?: boolean;
+    ignoreBarrier?: boolean;
+  } = {},
 ): { dealt: number; absorbed: number } {
   const armor = armorById(target.armor_id) ?? ARMORS[0];
   let damage = Math.max(1, Math.floor(rawDamage));
@@ -474,8 +478,10 @@ function damagePlayer(
       damage = Math.floor(damage * 0.8);
     }
   }
-  const absorbed = Math.min(target.barrier, damage);
-  target.barrier -= absorbed;
+  const absorbed = options.ignoreBarrier
+    ? 0
+    : Math.min(target.barrier, damage);
+  if (!options.ignoreBarrier) target.barrier -= absorbed;
   damage -= absorbed;
   if (!options.ignoreDefense && target.itemList.includes("diamond_crystal")) {
     damage = Math.min(50, damage);
@@ -1114,6 +1120,7 @@ export async function POST(request: Request) {
         }
         const resultDamage = damagePlayer(target, rawDamage, {
           ignoreDefense: isBasic && Boolean(weapon.ignoresDefense),
+          ignoreBarrier: isBasic && Boolean(weapon.ignoresBarrier),
         });
         amount = resultDamage.dealt;
         const actionName = powerStrike
