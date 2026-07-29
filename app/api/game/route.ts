@@ -49,6 +49,7 @@ type PlayerRow = {
   sleep_turns: number;
   ready: number;
   last_seen_at: string;
+  forfeit_at: string | null;
   joined_at: string;
 };
 
@@ -114,6 +115,7 @@ async function ensureSchema(db: D1Database) {
         sleep_turns INTEGER NOT NULL DEFAULT 0,
         ready INTEGER NOT NULL DEFAULT 0,
         last_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        forfeit_at TEXT,
         joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (room_id) REFERENCES rooms(id)
       )
@@ -152,6 +154,7 @@ async function ensureSchema(db: D1Database) {
     ["loadout_item_ids", "TEXT NOT NULL DEFAULT '[]'"],
     ["sleep_turns", "INTEGER NOT NULL DEFAULT 0"],
     ["last_seen_at", "TEXT NOT NULL DEFAULT '1970-01-01 00:00:00'"],
+    ["forfeit_at", "TEXT"],
   ] as const;
   for (const [name, definition] of additions) {
     if (!columns.has(name)) {
@@ -213,7 +216,11 @@ async function expireDisconnectedPlayers(
     .all<PlayerRow>();
   const staleIdsResult = await db
     .prepare(
-      "SELECT id FROM players WHERE room_id = ? AND hp > 0 AND datetime(last_seen_at) < datetime('now', '-15 seconds')",
+      `SELECT id FROM players
+       WHERE room_id = ? AND hp > 0 AND (
+         (forfeit_at IS NOT NULL AND datetime(forfeit_at) < datetime('now', '-5 seconds'))
+         OR datetime(last_seen_at) < datetime('now', '-90 seconds')
+       )`,
     )
     .bind(room.id)
     .all<{ id: string }>();
@@ -578,8 +585,19 @@ export async function POST(request: Request) {
     const playerId = String(body.playerId ?? "");
     const token = String(body.token ?? "");
     const actor = await authenticate(db, room.id, playerId, token);
+    if (operation === "forfeit") {
+      await db
+        .prepare(
+          "UPDATE players SET forfeit_at = CURRENT_TIMESTAMP WHERE id = ?",
+        )
+        .bind(actor.id)
+        .run();
+      return Response.json({ ok: true });
+    }
     await db
-      .prepare("UPDATE players SET last_seen_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .prepare(
+        "UPDATE players SET last_seen_at = CURRENT_TIMESTAMP, forfeit_at = NULL WHERE id = ?",
+      )
       .bind(actor.id)
       .run();
 

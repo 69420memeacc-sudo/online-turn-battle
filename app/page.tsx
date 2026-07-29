@@ -219,6 +219,26 @@ export default function Home() {
     return () => window.clearInterval(timer);
   }, [session]);
 
+  useEffect(() => {
+    if (!session) return;
+    const notifyForfeit = () => {
+      const payload = new Blob(
+        [
+          JSON.stringify({
+            operation: "forfeit",
+            code: session.code,
+            playerId: session.playerId,
+            token: session.token,
+          }),
+        ],
+        { type: "application/json" },
+      );
+      navigator.sendBeacon("/api/game", payload);
+    };
+    window.addEventListener("pagehide", notifyForfeit);
+    return () => window.removeEventListener("pagehide", notifyForfeit);
+  }, [session]);
+
   const self = room?.players.find((player) => player.id === session?.playerId);
   const humans = room?.players.filter((player) => player.team === "humans") ?? [];
   const monsters =

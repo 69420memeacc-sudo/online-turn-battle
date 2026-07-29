@@ -25,7 +25,10 @@ test("ships the Crown & Claw entrance and online game flow", async () => {
   assert.match(route, /operation === "act"/);
   assert.match(route, /operation === "rematch"/);
   assert.match(route, /operation === "heartbeat"/);
-  assert.match(route, /'-15 seconds'/);
+  assert.match(route, /operation === "forfeit"/);
+  assert.match(route, /'-90 seconds'/);
+  assert.match(route, /'-5 seconds'/);
+  assert.match(page, /sendBeacon/);
   assert.match(route, /death_scythe/);
   assert.match(route, /snow_white_tear/);
   assert.match(route, /diamond_crystal/);
