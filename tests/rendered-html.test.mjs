@@ -5,10 +5,11 @@ import test from "node:test";
 const templateRoot = new URL("../", import.meta.url);
 
 test("ships the Crown & Claw entrance and online game flow", async () => {
-  const [page, layout, route] = await Promise.all([
+  const [page, layout, route, game] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/game/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/game.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /CROWN/);
@@ -25,6 +26,7 @@ test("ships the Crown & Claw entrance and online game flow", async () => {
   assert.match(route, /death_scythe/);
   assert.match(route, /snow_white_tear/);
   assert.match(route, /diamond_crystal/);
+  assert.match(game, /MP15で自身のHPを22回復/);
 });
 
 test("includes production assets and removes the starter preview", async () => {

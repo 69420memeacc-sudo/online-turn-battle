@@ -125,10 +125,11 @@ export const SKILLS: Skill[] = [
   {
     id: "mend",
     name: "治癒の祈り",
-    description: "自身のHPを22回復する。杖なら効果上昇。",
+    description: "MP15で自身のHPを22回復する。杖なら効果上昇。",
     cooldown: 2,
     icon: "✚",
     kind: "heal",
+    mpCost: 15,
   },
   {
     id: "guard",
