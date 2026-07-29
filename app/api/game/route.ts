@@ -51,8 +51,10 @@ type PlayerRow = {
   cooldowns: string;
   sleep_turns: number;
   poisoned: number;
+  poison_damage: number;
   extra_action_pending: number;
   giant_sword_wait: number;
+  turns_taken: number;
   ready: number;
   last_seen_at: string;
   forfeit_at: string | null;
@@ -120,8 +122,10 @@ async function ensureSchema(db: D1Database) {
         cooldowns TEXT NOT NULL DEFAULT '{}',
         sleep_turns INTEGER NOT NULL DEFAULT 0,
         poisoned INTEGER NOT NULL DEFAULT 0,
+        poison_damage INTEGER NOT NULL DEFAULT 6,
         extra_action_pending INTEGER NOT NULL DEFAULT 0,
         giant_sword_wait INTEGER NOT NULL DEFAULT 0,
+        turns_taken INTEGER NOT NULL DEFAULT 0,
         ready INTEGER NOT NULL DEFAULT 0,
         last_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         forfeit_at TEXT,
@@ -163,8 +167,10 @@ async function ensureSchema(db: D1Database) {
     ["loadout_item_ids", "TEXT NOT NULL DEFAULT '[]'"],
     ["sleep_turns", "INTEGER NOT NULL DEFAULT 0"],
     ["poisoned", "INTEGER NOT NULL DEFAULT 0"],
+    ["poison_damage", "INTEGER NOT NULL DEFAULT 6"],
     ["extra_action_pending", "INTEGER NOT NULL DEFAULT 0"],
     ["giant_sword_wait", "INTEGER NOT NULL DEFAULT 0"],
+    ["turns_taken", "INTEGER NOT NULL DEFAULT 0"],
     ["last_seen_at", "TEXT NOT NULL DEFAULT '1970-01-01 00:00:00'"],
     ["forfeit_at", "TEXT"],
   ] as const;
@@ -212,6 +218,7 @@ function publicPlayer(row: PlayerRow): PublicPlayer {
     cooldowns: parseJson<Record<string, number>>(row.cooldowns, {}),
     sleepTurns: row.sleep_turns,
     poisoned: Boolean(row.poisoned),
+    turnsTaken: row.turns_taken,
     ready: Boolean(row.ready),
   };
 }
@@ -455,12 +462,14 @@ function validateItems(itemIds: string[]) {
 function damagePlayer(
   target: BattlePlayer,
   rawDamage: number,
-  options: { ignoreDefense?: boolean } = {},
+  options: { ignoreDefense?: boolean; ignoreArmor?: boolean } = {},
 ): { dealt: number; absorbed: number } {
   const armor = armorById(target.armor_id) ?? ARMORS[0];
   let damage = Math.max(1, Math.floor(rawDamage));
   if (!options.ignoreDefense) {
-    damage = Math.max(1, damage - armor.defense);
+    if (!options.ignoreArmor) {
+      damage = Math.max(1, damage - armor.defense);
+    }
     if (target.itemList.includes("diamond_crystal")) {
       damage = Math.floor(damage * 0.8);
     }
@@ -638,21 +647,23 @@ export async function POST(request: Request) {
         : [];
       const weapon = weaponById(weaponId);
       const armor = armorById(armorId);
+      const skillLimit = weapon?.skillSlots ?? SKILL_LIMIT;
       if (
         !weapon ||
         !armor ||
-        skillIds.length > SKILL_LIMIT ||
+        skillIds.length > skillLimit ||
         skillIds.some((id) => !skillById(id)) ||
-        skillIds.some((id) => {
-          const requiredType = skillById(id)?.requiredWeaponType;
-          return requiredType && requiredType !== weapon.type;
-        }) ||
+        (!weapon.ignoresSkillRestrictions &&
+          skillIds.some((id) => {
+            const requiredType = skillById(id)?.requiredWeaponType;
+            return requiredType && requiredType !== weapon.type;
+          })) ||
         (weapon.forbidsPowerStrike && skillIds.includes("power_strike")) ||
         !validateItems(itemIds)
       ) {
         return Response.json(
           {
-            error: `武器1・防具1・スキル/魔法${SKILL_LIMIT}枠・アイテム${ITEM_LIMIT}枠で編成してください。`,
+            error: `武器1・防具1・スキル/魔法${skillLimit}枠・アイテム${ITEM_LIMIT}枠で編成してください。`,
           },
           { status: 400 },
         );
@@ -662,7 +673,7 @@ export async function POST(request: Request) {
       const startingItems = [...DEFAULT_ITEM_IDS, ...itemIds];
       await db
         .prepare(
-          "UPDATE players SET weapon_id = ?, armor_id = ?, skill_ids = ?, item_ids = ?, loadout_item_ids = ?, hp = ?, max_hp = ?, mp = ?, max_mp = ?, poisoned = 0, extra_action_pending = 0, giant_sword_wait = 0, ready = 1 WHERE id = ?",
+          "UPDATE players SET weapon_id = ?, armor_id = ?, skill_ids = ?, item_ids = ?, loadout_item_ids = ?, hp = ?, max_hp = ?, mp = ?, max_mp = ?, poisoned = 0, poison_damage = 6, extra_action_pending = 0, giant_sword_wait = 0, turns_taken = 0, ready = 1 WHERE id = ?",
         )
         .bind(
           weaponId,
@@ -725,7 +736,7 @@ export async function POST(request: Request) {
         const startingItems = [...DEFAULT_ITEM_IDS, ...savedItems];
         return db
           .prepare(
-            "UPDATE players SET hp = ?, max_hp = ?, mp = ?, max_mp = ?, barrier = 0, item_ids = ?, cooldowns = '{}', sleep_turns = 0, poisoned = 0, extra_action_pending = 0, giant_sword_wait = 0 WHERE id = ?",
+            "UPDATE players SET hp = ?, max_hp = ?, mp = ?, max_mp = ?, barrier = 0, item_ids = ?, cooldowns = '{}', sleep_turns = 0, poisoned = 0, poison_damage = 6, extra_action_pending = 0, giant_sword_wait = 0, turns_taken = 0 WHERE id = ?",
           )
           .bind(
             maxHp,
@@ -791,7 +802,7 @@ export async function POST(request: Request) {
         statements.push(
           db
             .prepare(
-              "UPDATE players SET hp = ?, max_hp = ?, mp = ?, max_mp = ?, barrier = 0, item_ids = ?, cooldowns = '{}', sleep_turns = 0, poisoned = 0, extra_action_pending = 0, giant_sword_wait = 0, ready = 1 WHERE id = ?",
+              "UPDATE players SET hp = ?, max_hp = ?, mp = ?, max_mp = ?, barrier = 0, item_ids = ?, cooldowns = '{}', sleep_turns = 0, poisoned = 0, poison_damage = 6, extra_action_pending = 0, giant_sword_wait = 0, turns_taken = 0, ready = 1 WHERE id = ?",
             )
             .bind(
               maxHp,
@@ -845,6 +856,7 @@ export async function POST(request: Request) {
       const selectedSkill = skillById(actionId);
       const selectedItem = itemById(actionId);
       const isBasic = actionId === "basic";
+      const weapon = weaponById(active.weapon_id) ?? WEAPONS[0];
 
       if (
         !isBasic &&
@@ -852,7 +864,8 @@ export async function POST(request: Request) {
           (selectedSkill && active.skillList.includes(actionId)) ||
           (selectedItem &&
             selectedItem.kind === "consumable" &&
-            active.itemList.includes(actionId))
+            (active.itemList.includes(actionId) ||
+              (actionId === "antidote_potion" && weapon.unlimitedAntidote)))
         )
       ) {
         return Response.json(
@@ -873,8 +886,8 @@ export async function POST(request: Request) {
         );
       }
 
-      const weapon = weaponById(active.weapon_id) ?? WEAPONS[0];
       if (
+        !weapon.ignoresSkillRestrictions &&
         selectedSkill?.requiredWeaponType &&
         weapon.type !== selectedSkill.requiredWeaponType
       ) {
@@ -887,6 +900,12 @@ export async function POST(request: Request) {
         return Response.json(
           { error: `${weapon.name}では渾身撃を使用できません。` },
           { status: 400 },
+        );
+      }
+      if (actionId === "snow_white_tear" && active.turns_taken === 0) {
+        return Response.json(
+          { error: "白雪姫の涙は最初の個人手番には使用できません。" },
+          { status: 409 },
         );
       }
       if ((selectedSkill?.mpCost ?? 0) > active.mp) {
@@ -1033,7 +1052,8 @@ export async function POST(request: Request) {
           );
         }
         target.poisoned = 1;
-        message = `${active.name}は毒ポーションを使い、${target.name}を毒状態にした`;
+        target.poison_damage = 6 * (weapon.poisonMultiplier ?? 1);
+        message = `${active.name}は毒ポーションを使い、${target.name}を毎手番${target.poison_damage}ダメージの毒状態にした`;
       } else if (actionId === "antidote_potion") {
         target =
           allyCandidates.find((player) => player.id === requestedTargetId) ??
@@ -1045,6 +1065,7 @@ export async function POST(request: Request) {
           );
         }
         target.poisoned = 0;
+        target.poison_damage = 6;
         message = `${active.name}は解毒ポーションを使い、${target.name}の毒を解除した`;
       } else if (actionId === "heavens_scale") {
         target = enemyCandidates[randomIndex(enemyCandidates.length)];
@@ -1052,9 +1073,12 @@ export async function POST(request: Request) {
           message = `天国の天秤は${active.name}と${target.name}のMPが等しいと示した。ダメージはない`;
         } else {
           const loser = active.mp < target.mp ? active : target;
-          const resultDamage = damagePlayer(loser, 50);
+          const scaleDamage = Math.floor(loser.max_hp * 0.5);
+          const resultDamage = damagePlayer(loser, scaleDamage, {
+            ignoreArmor: true,
+          });
           amount = resultDamage.dealt;
-          message = `天国の天秤が${target.name}を選んだ。MPの低い${loser.name}に${amount}ダメージ`;
+          message = `天国の天秤が${target.name}を選んだ。MPの低い${loser.name}に最大HPの50%にあたる${amount}ダメージ`;
         }
       } else {
         if (!target) {
@@ -1090,7 +1114,10 @@ export async function POST(request: Request) {
         }
       }
 
-      if (selectedItem) {
+      if (
+        selectedItem &&
+        !(selectedItem.id === "antidote_potion" && weapon.unlimitedAntidote)
+      ) {
         const itemIndex = active.itemList.indexOf(selectedItem.id);
         if (itemIndex >= 0) active.itemList.splice(itemIndex, 1);
       }
@@ -1114,6 +1141,7 @@ export async function POST(request: Request) {
       const continueTwinBladeTurn =
         (weapon.actionsPerTurn ?? 1) > 1 && active.extra_action_pending === 0;
       active.extra_action_pending = continueTwinBladeTurn ? 1 : 0;
+      if (!continueTwinBladeTurn) active.turns_taken += 1;
 
       const livingFor = (team: Team) =>
         players.filter((player) => player.team === team && player.hp > 0);
@@ -1161,7 +1189,7 @@ export async function POST(request: Request) {
           const candidate = living[cursor % living.length];
 
           if (candidate.poisoned) {
-            const poisonDamage = Math.min(6, candidate.hp);
+            const poisonDamage = Math.min(candidate.poison_damage, candidate.hp);
             candidate.hp -= poisonDamage;
             automaticLogs.push({
               id: crypto.randomUUID(),
@@ -1189,6 +1217,7 @@ export async function POST(request: Request) {
 
           if (candidate.sleep_turns > 0) {
             candidate.sleep_turns -= 1;
+            candidate.turns_taken += 1;
             automaticLogs.push({
               id: crypto.randomUUID(),
               turn: nextTurnNumber,
@@ -1207,6 +1236,7 @@ export async function POST(request: Request) {
           const candidateWeapon = weaponById(candidate.weapon_id) ?? WEAPONS[0];
           if (candidateWeapon.skipsEveryOtherTurn && candidate.giant_sword_wait) {
             candidate.giant_sword_wait = 0;
+            candidate.turns_taken += 1;
             automaticLogs.push({
               id: crypto.randomUUID(),
               turn: nextTurnNumber,
@@ -1266,7 +1296,7 @@ export async function POST(request: Request) {
         statements.push(
           db
             .prepare(
-              "UPDATE players SET hp = ?, mp = ?, barrier = ?, item_ids = ?, cooldowns = ?, sleep_turns = ?, poisoned = ?, extra_action_pending = ?, giant_sword_wait = ? WHERE id = ?",
+              "UPDATE players SET hp = ?, mp = ?, barrier = ?, item_ids = ?, cooldowns = ?, sleep_turns = ?, poisoned = ?, poison_damage = ?, extra_action_pending = ?, giant_sword_wait = ?, turns_taken = ? WHERE id = ?",
             )
             .bind(
               player.hp,
@@ -1276,8 +1306,10 @@ export async function POST(request: Request) {
               JSON.stringify(player.cooldownMap),
               player.sleep_turns,
               player.poisoned,
+              player.poison_damage,
               player.extra_action_pending,
               player.giant_sword_wait,
+              player.turns_taken,
               player.id,
             ),
         );

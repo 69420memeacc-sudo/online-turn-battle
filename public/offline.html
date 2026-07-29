@@ -204,7 +204,7 @@
         <div>
           <p class="eyebrow">SOLO WAR ROOM</p>
           <h1>魔炎龍への出陣準備</h1>
-          <p>オンラインと同じ装備編成で、レベル1〜99の魔炎龍ガイザーに挑戦します。武器1・防具1・技2・追加アイテム3を選んでください。</p>
+          <p>オンラインと同じ装備編成で、レベル1〜99の魔炎龍ガイザーに挑戦します。武器1・防具1・通常技2（叡智の書は4）・追加アイテム3を選んでください。</p>
         </div>
         <div class="level-panel">
           <label>GAISER LEVEL <input id="botLevel" type="number" min="1" max="99" value="20" /></label>
@@ -230,7 +230,7 @@
           </div>
 
           <div class="loadout-group">
-            <h3><span>03</span> スキルと魔法を2つまで</h3>
+            <h3><span>03</span> スキルと魔法（通常2枠・叡智の書4枠）</h3>
             <div id="skillGrid" class="item-grid"></div>
           </div>
 
@@ -326,8 +326,9 @@
       {id:"oakstaff",name:"古樫の杖",description:"基礎最大MPが200になり、吸引を使用できる。",damage:12,type:"staff",healingBonus:8,image:"/icons/weapon-oakstaff.png"},
       {id:"ancient_rapier",name:"古代のレイピア",description:"攻20。通常攻撃が防具とダイヤモンド結晶を無視。渾身撃は使用不可。",damage:20,type:"sword",forbidsPowerStrike:true,ignoresDefense:true,image:"/icons/weapon-ancient-rapier.png"},
       {id:"demon_twin_blades",name:"妖魔双刀",description:"攻13。同じ手番で2回行動。最大HP・MPが20%低下し、渾身撃は使用不可。",damage:13,type:"sword",maxStatMultiplier:.8,forbidsPowerStrike:true,actionsPerTurn:2,image:"/icons/weapon-demon-twin-blades.png"},
-      {id:"giant_sword",name:"巨人の剣",description:"攻35。基本攻撃が毎回渾身撃（攻45）になるが、次の自分の手番を休む。",damage:35,type:"sword",alwaysPowerStrike:true,skipsEveryOtherTurn:true,image:"/icons/weapon-giant-sword.png"},
-      {id:"elzarem_staff",name:"緑精霊エルザレムの杖",description:"攻8。基礎最大MP200。エメラルド結晶1個につき攻撃倍率1.6倍。",damage:8,type:"staff",emeraldMultiplier:1.6,image:"/icons/weapon-elzarem-staff.png"}
+      {id:"giant_sword",name:"巨人の剣",description:"攻35・最大HP200。基本攻撃が毎回渾身撃（攻45）になるが、次の自分の手番を休む。",damage:35,type:"sword",maxHpOverride:200,alwaysPowerStrike:true,skipsEveryOtherTurn:true,image:"/icons/weapon-giant-sword.png"},
+      {id:"elzarem_staff",name:"緑精霊エルザレムの杖",description:"攻8。基礎最大MP200。エメラルド結晶1個につき攻撃倍率1.6倍。",damage:8,type:"staff",emeraldMultiplier:1.6,image:"/icons/weapon-elzarem-staff.png"},
+      {id:"wisdom_book",name:"叡智の書",description:"攻1・基礎最大MP200。スキル4枠、武器制限無視、毒ダメージ2倍、解毒ポーション無制限。",damage:1,type:"tome",skillSlots:4,ignoresSkillRestrictions:true,poisonMultiplier:2,unlimitedAntidote:true,image:"/icons/weapon-wisdom-book.png"}
     ];
 
     const ARMORS = [
@@ -351,10 +352,10 @@
     const ITEMS = [
       {id:"ruby_crystal",name:"ルビーの結晶",description:"自身のHPを30回復。",kind:"consumable",maxCopies:2,image:"/icons/item-ruby-crystal.png"},
       {id:"sapphire_crystal",name:"サファイアの結晶",description:"自身の最大MPの30%を回復。",kind:"consumable",maxCopies:2,image:"/icons/item-sapphire-crystal.png"},
-      {id:"snow_white_tear",name:"白雪姫の涙",description:"ガイザーを2ターン眠らせる。",kind:"consumable",maxCopies:1,image:"/icons/item-snow-white-tear.png"},
-      {id:"heavens_scale",name:"天国の天秤",description:"MPが低い方に50ダメージ。",kind:"consumable",image:"/icons/item-heavens-scale.png"},
-      {id:"poison_potion",name:"毒ポーション",description:"ガイザーに毎ターン6ダメージの毒を付与。",kind:"consumable",image:"/icons/item-poison-potion.png"},
-      {id:"antidote_potion",name:"解毒ポーション",description:"自身の毒状態を解除。",kind:"consumable",image:"/icons/item-antidote-potion.png"},
+      {id:"snow_white_tear",name:"白雪姫の涙",description:"ガイザーを2ターン眠らせる。最初の個人手番には使用不可。",kind:"consumable",maxCopies:1,image:"/icons/item-snow-white-tear.png"},
+      {id:"heavens_scale",name:"天国の天秤",description:"MPが低い方に最大HPの50%ダメージ。防具無視。",kind:"consumable",image:"/icons/item-heavens-scale.png"},
+      {id:"poison_potion",name:"毒ポーション",description:"ガイザーに毎ターン6ダメージの毒を付与。叡智の書なら12。",kind:"consumable",image:"/icons/item-poison-potion.png"},
+      {id:"antidote_potion",name:"解毒ポーション",description:"自身の毒状態を解除。叡智の書なら無制限。",kind:"consumable",image:"/icons/item-antidote-potion.png"},
       {id:"emerald_crystal",name:"エメラルドの結晶",description:"攻撃を1個につき1.2倍。エルザレムの杖なら1.6倍。",kind:"passive",image:"/icons/item-emerald-crystal.png"},
       {id:"diamond_crystal",name:"ダイヤモンドの結晶",description:"被ダメージ20%減・1ターン最大50。",kind:"passive",maxCopies:1,image:"/icons/item-diamond-crystal.png"}
     ];
@@ -378,8 +379,8 @@
     function armor() { return byId(ARMORS, setup.armorId); }
     function maxStats(selectedWeapon = weapon(), selectedArmor = armor()) {
       const multiplier = selectedWeapon.maxStatMultiplier || 1;
-      const maxHp = Math.floor(100 * multiplier);
-      const baseMp = selectedWeapon.type === "staff" ? 200 : 100;
+      const maxHp = selectedWeapon.maxHpOverride || Math.floor(100 * multiplier);
+      const baseMp = selectedWeapon.type === "staff" || selectedWeapon.type === "tome" ? 200 : 100;
       return { maxHp, maxMp: Math.floor((baseMp + selectedArmor.mpBonus) * multiplier) };
     }
 
@@ -399,7 +400,7 @@
         <button class="item-card ${setup.weaponId === entry.id ? "selected" : ""}" data-weapon="${entry.id}">
           <img class="generated-icon" src="${entry.image}" alt="${entry.name}" />
           <span class="item-copy"><b>${entry.name}</b><small>${entry.description}</small></span>
-          <span class="item-stat">攻 ${entry.damage}<i>MP ${maxStats(entry, armor()).maxMp}</i></span>
+          <span class="item-stat">攻 ${entry.damage}<i>HP ${maxStats(entry, armor()).maxHp}</i><i>MP ${maxStats(entry, armor()).maxMp}</i></span>
         </button>`).join("");
       document.querySelectorAll("[data-weapon]").forEach((button) => button.addEventListener("click", () => selectWeapon(button.dataset.weapon)));
     }
@@ -414,21 +415,24 @@
       document.querySelectorAll("[data-armor]").forEach((button) => button.addEventListener("click", () => { setup.armorId = button.dataset.armor; renderSetup(); }));
     }
 
+    function skillLimit() { return weapon().skillSlots || SKILL_LIMIT; }
+
     function compatibleSkills() {
       const selectedWeapon = weapon();
+      if (selectedWeapon.ignoresSkillRestrictions) return SKILLS;
       return SKILLS.filter((skill) => (!skill.requiredWeaponType || skill.requiredWeaponType === selectedWeapon.type) && !(skill.id === "power_strike" && selectedWeapon.forbidsPowerStrike));
     }
 
     function selectWeapon(id) {
       setup.weaponId = id;
       const allowed = new Set(compatibleSkills().map((skill) => skill.id));
-      setup.skillIds = setup.skillIds.filter((skillId) => allowed.has(skillId));
+      setup.skillIds = setup.skillIds.filter((skillId) => allowed.has(skillId)).slice(0, skillLimit());
       renderSetup();
     }
 
     function toggleSkill(id) {
       if (setup.skillIds.includes(id)) setup.skillIds = setup.skillIds.filter((current) => current !== id);
-      else if (setup.skillIds.length < SKILL_LIMIT) setup.skillIds.push(id);
+      else if (setup.skillIds.length < skillLimit()) setup.skillIds.push(id);
       renderSkills();
       updateLimits();
     }
@@ -474,7 +478,7 @@
       document.querySelectorAll("[data-remove-item]").forEach((button) => button.addEventListener("click", () => removeItem(button.dataset.removeItem)));
     }
 
-    function updateLimits() { $("#loadoutLimits").textContent = `技 ${setup.skillIds.length}/${SKILL_LIMIT} ・ 道具 ${setup.itemIds.length}/${ITEM_LIMIT}`; }
+    function updateLimits() { $("#loadoutLimits").textContent = `技 ${setup.skillIds.length}/${skillLimit()} ・ 道具 ${setup.itemIds.length}/${ITEM_LIMIT}`; }
     function renderSetup() { renderWeapons(); renderArmors(); renderSkills(); renderItems(); updateLimits(); updateLevelPreview(); }
 
     function buildBattle() {
@@ -493,7 +497,7 @@
         botTurnStarted:false,
         extraAction:false,
         logs:[],
-        player:{name,hp:maxima.maxHp,maxHp:maxima.maxHp,mp:maxima.maxMp,maxMp:maxima.maxMp,barrier:0,weapon:selectedWeapon,armor:selectedArmor,skillIds:[...setup.skillIds],itemIds:[...DEFAULT_ITEMS,...setup.itemIds],cooldowns:{},sleepTurns:0,poisoned:false,poisonDamage:0,giantWait:false},
+        player:{name,hp:maxima.maxHp,maxHp:maxima.maxHp,mp:maxima.maxMp,maxMp:maxima.maxMp,barrier:0,weapon:selectedWeapon,armor:selectedArmor,skillIds:[...setup.skillIds],itemIds:[...DEFAULT_ITEMS,...setup.itemIds],cooldowns:{},sleepTurns:0,poisoned:false,poisonDamage:0,giantWait:false,turnsTaken:0},
         bot:{name:`魔炎龍ガイザー Lv${level}`,level,hp:stats.hp,maxHp:stats.hp,mp:0,maxMp:0,barrier:0,sleepTurns:0,poisoned:false,poisonDamage:6}
       };
       addLog(`${battle.bot.name}が現れた。${battle.player.name}が先攻`);
@@ -522,7 +526,7 @@
     function damage(target, rawDamage, options = {}) {
       let result = Math.max(1, Math.floor(rawDamage));
       if (!options.ignoreDefense && target.armor) {
-        result = Math.max(1, result - target.armor.defense);
+        if (!options.ignoreArmor) result = Math.max(1, result - target.armor.defense);
         if (target.itemIds && target.itemIds.includes("diamond_crystal")) result = Math.floor(result * .8);
       }
       const absorbed = Math.min(target.barrier || 0, result);
@@ -564,11 +568,13 @@
       if (battle.player.sleepTurns > 0) {
         battle.player.sleepTurns -= 1;
         addLog(`${battle.player.name}は眠っているため手番をスキップした（残り${battle.player.sleepTurns}回）`);
+        battle.player.turnsTaken += 1;
         return passToBot();
       }
       if (battle.player.giantWait) {
         battle.player.giantWait = false;
         addLog(`${battle.player.name}は巨人の剣を振るった反動で手番を休んだ`);
+        battle.player.turnsTaken += 1;
         return passToBot();
       }
       renderBattle();
@@ -687,7 +693,9 @@
         }
         if (selectedSkill.cooldown > 0) player.cooldowns[selectedSkill.id] = selectedSkill.cooldown;
       } else if (selectedItem) {
-        if (!player.itemIds.includes(actionId) || selectedItem.kind === "passive") return;
+        const infiniteAntidote = actionId === "antidote_potion" && player.weapon.unlimitedAntidote;
+        if ((!player.itemIds.includes(actionId) && !infiniteAntidote) || selectedItem.kind === "passive") return;
+        if (actionId === "snow_white_tear" && player.turnsTaken === 0) return;
         if (actionId === "ruby_crystal") {
           const amount = heal(player, 30);
           message = `${player.name}はルビーの結晶を使いHPを${amount}回復した`;
@@ -701,23 +709,23 @@
         } else if (actionId === "heavens_scale") {
           if (player.mp === bot.mp) message = "天国の天秤は両者のMPが等しいと示した。ダメージはない";
           else if (player.mp < bot.mp) {
-            const result = damage(player, 50);
-            message = `天国の天秤により${player.name}が${result.dealt}ダメージを受けた`;
+            const result = damage(player, Math.floor(player.maxHp * .5), {ignoreArmor:true});
+            message = `天国の天秤により${player.name}が最大HPの50%にあたる${result.dealt}ダメージを受けた`;
           } else {
-            const result = damage(bot, 50);
-            message = `天国の天秤により${bot.name}が${result.dealt}ダメージを受けた`;
+            const result = damage(bot, Math.floor(bot.maxHp * .5), {ignoreArmor:true});
+            message = `天国の天秤により${bot.name}が最大HPの50%にあたる${result.dealt}ダメージを受けた`;
           }
         } else if (actionId === "poison_potion") {
           bot.poisoned = true;
-          bot.poisonDamage = 6;
-          message = `${player.name}は毒ポーションを使い、${bot.name}に毎ターン6ダメージの毒を付与した`;
+          bot.poisonDamage = 6 * (player.weapon.poisonMultiplier || 1);
+          message = `${player.name}は毒ポーションを使い、${bot.name}に毎ターン${bot.poisonDamage}ダメージの毒を付与した`;
         } else if (actionId === "antidote_potion") {
           if (!player.poisoned) return;
           player.poisoned = false;
           player.poisonDamage = 0;
           message = `${player.name}は解毒ポーションを使い毒を解除した`;
         }
-        removeBattleItem(actionId);
+        if (!(actionId === "antidote_potion" && player.weapon.unlimitedAntidote)) removeBattleItem(actionId);
       }
 
       addLog(message);
@@ -737,6 +745,7 @@
         return renderBattle();
       }
       battle.extraAction = false;
+      player.turnsTaken += 1;
       if (player.weapon.skipsEveryOtherTurn) player.giantWait = true;
       passToBot();
     }
@@ -783,9 +792,13 @@
       $("#skillActions").innerHTML = skillButtons.join("");
 
       const consumables = [...new Set(player.itemIds)].map((id) => byId(ITEMS,id)).filter((item) => item && item.kind === "consumable");
+      if (player.weapon.unlimitedAntidote && !consumables.some((item) => item.id === "antidote_potion")) consumables.push(byId(ITEMS,"antidote_potion"));
       $("#itemActions").innerHTML = consumables.length ? consumables.map((item) => {
-        const canUse = enabled && !(item.id === "antidote_potion" && !player.poisoned);
-        return `<button data-action="${item.id}" ${canUse ? "" : "disabled"}><img src="${item.image}" alt=""><b>${item.name} ×${countOf(player.itemIds,item.id)}</b><small>${item.description}</small></button>`;
+        const firstTurnLock = item.id === "snow_white_tear" && player.turnsTaken === 0;
+        const canUse = enabled && !firstTurnLock && !(item.id === "antidote_potion" && !player.poisoned);
+        const countLabel = item.id === "antidote_potion" && player.weapon.unlimitedAntidote ? "∞" : countOf(player.itemIds,item.id);
+        const detail = firstTurnLock ? "最初の個人手番には使用できません" : item.description;
+        return `<button data-action="${item.id}" ${canUse ? "" : "disabled"}><img src="${item.image}" alt=""><b>${item.name} ×${countLabel}</b><small>${detail}</small></button>`;
       }).join("") : '<p class="no-items">使えるアイテムはありません。</p>';
 
       document.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", () => playerAct(button.dataset.action)));

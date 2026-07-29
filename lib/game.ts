@@ -1,6 +1,6 @@
 export type Team = "humans" | "monsters";
 export type RoomStatus = "lobby" | "battle" | "finished";
-export type WeaponType = "sword" | "bow" | "staff";
+export type WeaponType = "sword" | "bow" | "staff" | "tome";
 
 export type Weapon = {
   id: string;
@@ -12,12 +12,17 @@ export type Weapon = {
   image: string;
   healingBonus?: number;
   maxStatMultiplier?: number;
+  maxHpOverride?: number;
   forbidsPowerStrike?: boolean;
   ignoresDefense?: boolean;
   actionsPerTurn?: number;
   skipsEveryOtherTurn?: boolean;
   alwaysPowerStrike?: boolean;
   emeraldMultiplier?: number;
+  skillSlots?: number;
+  ignoresSkillRestrictions?: boolean;
+  poisonMultiplier?: number;
+  unlimitedAntidote?: boolean;
 };
 
 export type Armor = {
@@ -131,11 +136,12 @@ export const WEAPONS: Weapon[] = [
     id: "giant_sword",
     name: "巨人の剣",
     description:
-      "攻35。基本攻撃が毎回渾身撃（攻45）になるが、行動後は次の自分の手番を休む。",
+      "攻35。最大HP200。基本攻撃が毎回渾身撃（攻45）になるが、行動後は次の自分の手番を休む。",
     damage: 35,
     type: "sword",
     icon: "▰",
     image: "/icons/weapon-giant-sword.png",
+    maxHpOverride: 200,
     skipsEveryOtherTurn: true,
     alwaysPowerStrike: true,
   },
@@ -149,6 +155,20 @@ export const WEAPONS: Weapon[] = [
     icon: "♧",
     image: "/icons/weapon-elzarem-staff.png",
     emeraldMultiplier: 1.6,
+  },
+  {
+    id: "wisdom_book",
+    name: "叡智の書",
+    description:
+      "攻1・基礎最大MP200。スキルを4つ選択でき、弓・杖の制限を無視する。毒ポーションの毒ダメージが2倍になり、解毒ポーションを無制限に使える。",
+    damage: 1,
+    type: "tome",
+    icon: "▣",
+    image: "/icons/weapon-wisdom-book.png",
+    skillSlots: 4,
+    ignoresSkillRestrictions: true,
+    poisonMultiplier: 2,
+    unlimitedAntidote: true,
   },
 ];
 
@@ -297,7 +317,8 @@ export const ITEMS: GameItem[] = [
   {
     id: "snow_white_tear",
     name: "白雪姫の涙",
-    description: "指定した敵1人を2ターン眠らせる。",
+    description:
+      "指定した敵1人を2ターン眠らせる。各プレイヤーの最初の個人手番には使用できない。",
     kind: "consumable",
     maxCopies: 1,
     image: "/icons/item-snow-white-tear.png",
@@ -305,7 +326,8 @@ export const ITEMS: GameItem[] = [
   {
     id: "heavens_scale",
     name: "天国の天秤",
-    description: "ランダムな敵とMPを比べ、低い方が50ダメージ。",
+    description:
+      "ランダムな敵とMPを比べ、低い方が自身の最大HPの50%ダメージを受ける。防具を無視する。",
     kind: "consumable",
     image: "/icons/item-heavens-scale.png",
   },
@@ -313,14 +335,15 @@ export const ITEMS: GameItem[] = [
     id: "poison_potion",
     name: "毒ポーション",
     description:
-      "指定した敵1人を毒状態にする。毒は本人の手番開始時に6ダメージを与え、解毒まで続く。",
+      "指定した敵1人を毒状態にする。毒は本人の手番開始時に6ダメージを与え、解毒まで続く。叡智の書なら12ダメージ。",
     kind: "consumable",
     image: "/icons/item-poison-potion.png",
   },
   {
     id: "antidote_potion",
     name: "解毒ポーション",
-    description: "自身または味方1人の毒状態を解除する。",
+    description:
+      "自身または味方1人の毒状態を解除する。叡智の書なら所持数に関係なく無制限に使える。",
     kind: "consumable",
     image: "/icons/item-antidote-potion.png",
   },
@@ -328,7 +351,7 @@ export const ITEMS: GameItem[] = [
     id: "emerald_crystal",
     name: "エメラルドの結晶",
     description:
-      "所持中、通常攻撃・渾身撃・黄金の光矢が1個につき20%増加。緑精霊エルザレムの杖なら40%増加。重複可。",
+      "所持中、通常攻撃・渾身撃・黄金の光矢が1個につき20%増加。緑精霊エルザレムの杖なら60%増加。重複可。",
     kind: "passive",
     image: "/icons/item-emerald-crystal.png",
   },
@@ -348,12 +371,14 @@ export const armorById = (id: string) =>
   ARMORS.find((item) => item.id === id);
 export const maxHpForLoadout = (weaponId: string) => {
   const weapon = weaponById(weaponId);
+  if (weapon?.maxHpOverride) return weapon.maxHpOverride;
   return Math.floor(BASE_MAX_HP * (weapon?.maxStatMultiplier ?? 1));
 };
 export const maxMpForLoadout = (weaponId: string, armorId: string) => {
   const weapon = weaponById(weaponId);
   const armor = armorById(armorId);
-  const baseMp = weapon?.type === "staff" ? STAFF_MAX_MP : BASE_MAX_MP;
+  const usesExpandedMp = weapon?.type === "staff" || weapon?.type === "tome";
+  const baseMp = usesExpandedMp ? STAFF_MAX_MP : BASE_MAX_MP;
   return Math.floor(
     (baseMp + (armor?.mpBonus ?? 0)) * (weapon?.maxStatMultiplier ?? 1),
   );
@@ -379,6 +404,7 @@ export type PublicPlayer = {
   cooldowns: Record<string, number>;
   sleepTurns: number;
   poisoned: boolean;
+  turnsTaken: number;
   ready: boolean;
 };
 

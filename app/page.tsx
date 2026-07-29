@@ -13,6 +13,7 @@ import {
   WEAPONS,
   armorById,
   itemById,
+  maxHpForLoadout,
   maxMpForLoadout,
   skillById,
   weaponById,
@@ -338,11 +339,13 @@ export default function Home() {
   function toggleSkill(skillId: string) {
     const skill = skillById(skillId);
     const weapon = weaponById(weaponId);
+    const skillLimit = weapon?.skillSlots ?? SKILL_LIMIT;
     if (skillId === "power_strike" && weapon?.forbidsPowerStrike) {
       setError(`${weapon.name}では渾身撃を使用できません。`);
       return;
     }
     if (
+      !weapon?.ignoresSkillRestrictions &&
       skill?.requiredWeaponType &&
       weapon?.type !== skill.requiredWeaponType
     ) {
@@ -355,8 +358,8 @@ export default function Home() {
       if (current.includes(skillId)) {
         return current.filter((id) => id !== skillId);
       }
-      if (current.length >= SKILL_LIMIT) {
-        setError(`スキルと魔法は合わせて${SKILL_LIMIT}枠までです。`);
+      if (current.length >= skillLimit) {
+        setError(`スキルと魔法は合わせて${skillLimit}枠までです。`);
         return current;
       }
       return [...current, skillId];
@@ -366,23 +369,29 @@ export default function Home() {
   function selectWeapon(nextWeaponId: string) {
     const nextWeapon = weaponById(nextWeaponId);
     if (!nextWeapon) return;
-    const incompatible = skillIds
-      .map(skillById)
-      .filter(
-        (skill) =>
-          (skill?.requiredWeaponType &&
-            skill.requiredWeaponType !== nextWeapon.type) ||
-          (skill?.id === "power_strike" && nextWeapon.forbidsPowerStrike),
-      );
+    const nextLimit = nextWeapon.skillSlots ?? SKILL_LIMIT;
+    const incompatible = nextWeapon.ignoresSkillRestrictions
+      ? []
+      : skillIds
+          .map(skillById)
+          .filter(
+            (skill) =>
+              (skill?.requiredWeaponType &&
+                skill.requiredWeaponType !== nextWeapon.type) ||
+              (skill?.id === "power_strike" && nextWeapon.forbidsPowerStrike),
+          );
+    const allowedIds = skillIds.filter(
+      (id) => !incompatible.some((skill) => skill?.id === id),
+    );
+    const nextSkillIds = allowedIds.slice(0, nextLimit);
     setWeaponId(nextWeaponId);
-    if (incompatible.length) {
-      setSkillIds((current) =>
-        current.filter(
-          (id) => !incompatible.some((skill) => skill?.id === id),
-        ),
-      );
+    setSkillIds(nextSkillIds);
+    if (incompatible.length || allowedIds.length > nextLimit) {
+      const removedNames = skillIds
+        .filter((id) => !nextSkillIds.includes(id))
+        .map((id) => skillById(id)?.name ?? id);
       setError(
-        `${incompatible.map((skill) => skill!.name).join("・")}は${nextWeapon.name}では使えないため、技枠から外しました。`,
+        `${removedNames.join("・")}は${nextWeapon.name}の技枠では使えないため外しました。`,
       );
     }
   }
@@ -441,6 +450,14 @@ export default function Home() {
         .map(itemById)
         .filter((item) => item?.kind === "consumable")
     : [];
+  const selfWeapon = weaponById(self?.weaponId ?? "");
+  if (
+    selfWeapon?.unlimitedAntidote &&
+    !uniqueBattleItems.some((item) => item?.id === "antidote_potion")
+  ) {
+    uniqueBattleItems.push(itemById("antidote_potion"));
+  }
+  const selectedSkillLimit = weaponById(weaponId)?.skillSlots ?? SKILL_LIMIT;
 
   return (
     <main className="game-shell">
@@ -489,7 +506,7 @@ export default function Home() {
               <em>選んだ装備で勝ち残れ。</em>
             </h1>
             <p className="lead">
-              武器と防具、2つの技、3つのアイテムを編成。
+              武器と防具、通常2つの技（叡智の書は4つ）、3つのアイテムを編成。
               仲間と陣営を組み、HPとMPを読み合うオンライン戦術バトル。
             </p>
             <div className="feature-row">
@@ -587,7 +604,7 @@ export default function Home() {
               <p className="eyebrow">WAR ROOM / {room.code}</p>
               <h1>出陣準備</h1>
               <p>
-                武器1・防具1・技2・追加アイテム3で編成します。ルビーとサファイアは1個ずつ標準支給。
+                武器1・防具1・通常は技2（叡智の書は4）・追加アイテム3で編成します。ルビーとサファイアは1個ずつ標準支給。
               </p>
             </div>
             <div className="room-code-box">
@@ -607,7 +624,7 @@ export default function Home() {
                   <h2>持ち込み装備</h2>
                 </div>
                 <div className="loadout-limits">
-                  技 {skillIds.length}/{SKILL_LIMIT} ・ 道具 {itemIds.length}/
+                  技 {skillIds.length}/{selectedSkillLimit} ・ 道具 {itemIds.length}/
                   {ITEM_LIMIT}
                 </div>
               </div>
@@ -640,6 +657,7 @@ export default function Home() {
                       </span>
                       <span className="item-stat">
                         攻 {weapon.damage}
+                        <i>HP {maxHpForLoadout(weapon.id)}</i>
                         <i>MP {maxMpForLoadout(weapon.id, armorId)}</i>
                       </span>
                     </button>
@@ -684,7 +702,7 @@ export default function Home() {
 
               <div className="loadout-group">
                 <h3>
-                  <span>03</span> スキルと魔法を2つまで
+                  <span>03</span> スキルと魔法を{selectedSkillLimit}つまで
                 </h3>
                 <div className="item-grid skills-grid">
                   {SKILLS.map((skill) => {
@@ -793,7 +811,7 @@ export default function Home() {
                 onClick={saveLoadout}
                 disabled={
                   busy ||
-                  skillIds.length > SKILL_LIMIT ||
+                  skillIds.length > selectedSkillLimit ||
                   itemIds.length > ITEM_LIMIT
                 }
               >
@@ -970,7 +988,7 @@ export default function Home() {
                 <button disabled={!myTurn || busy} onClick={() => act("basic")}>
                   <img
                     className="action-icon-image"
-                    src={weaponById(self?.weaponId ?? "")?.image ?? "/icons/weapon-longsword.svg"}
+                    src={weaponById(self?.weaponId ?? "")?.image ?? "/icons/weapon-longsword.png"}
                     alt=""
                     width={36}
                     height={36}
@@ -984,9 +1002,11 @@ export default function Home() {
                   const skill = skillById(skillId);
                   if (!skill || skill.kind === "passive") return null;
                   const cooldown = self.cooldowns[skillId] ?? 0;
+                  const equippedWeapon = weaponById(self.weaponId);
                   const wrongWeapon =
+                    !equippedWeapon?.ignoresSkillRestrictions &&
                     skill.requiredWeaponType &&
-                    weaponById(self.weaponId)?.type !== skill.requiredWeaponType;
+                    equippedWeapon?.type !== skill.requiredWeaponType;
                   const insufficientMp = skill.consumeAllMp
                     ? self.mp <= 0
                     : (skill.mpCost ?? 0) > self.mp;
@@ -1036,7 +1056,7 @@ export default function Home() {
                   <div className="passive-skill-card">
                     <img
                       className="action-icon-image"
-                      src="/icons/skill-cruelty.svg"
+                      src="/icons/skill-cruelty.png"
                       alt=""
                       width={36}
                       height={36}
@@ -1056,10 +1076,16 @@ export default function Home() {
                       item!.id === "ruby_crystal" ||
                       item!.id === "sapphire_crystal" ||
                       item!.id === "antidote_potion";
+                    const firstTurnLocked =
+                      item!.id === "snow_white_tear" &&
+                      (self?.turnsTaken ?? 0) === 0;
+                    const infiniteAntidote =
+                      item!.id === "antidote_potion" &&
+                      Boolean(selfWeapon?.unlimitedAntidote);
                     return (
                       <button
                         key={item!.id}
-                        disabled={!myTurn || busy}
+                        disabled={!myTurn || busy || firstTurnLocked}
                         onClick={() =>
                           act(
                             item!.id,
@@ -1076,9 +1102,13 @@ export default function Home() {
                           height={40}
                         />
                         <b>
-                          {item!.name} ×{count}
+                          {item!.name} ×{infiniteAntidote ? "∞" : count}
                         </b>
-                        <small>{item!.description}</small>
+                        <small>
+                          {firstTurnLocked
+                            ? "最初の個人手番には使用できません"
+                            : item!.description}
+                        </small>
                       </button>
                     );
                   })
