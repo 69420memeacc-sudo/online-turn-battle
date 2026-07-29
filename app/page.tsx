@@ -97,6 +97,7 @@ function PlayerCard({
         {player.sleepTurns > 0 ? (
           <span className="sleeping">☾ 睡眠 {player.sleepTurns}</span>
         ) : null}
+        {player.poisoned ? <span className="poisoned">☠ 毒</span> : null}
       </div>
       {passives.length ? (
         <div className="passive-row">
@@ -207,6 +208,18 @@ export default function Home() {
 
   useEffect(() => {
     if (!session) return;
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refreshRoom(session.code);
+      }
+    };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () =>
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+  }, [refreshRoom, session]);
+
+  useEffect(() => {
+    if (!session) return;
     const heartbeat = () =>
       fetch("/api/game", {
         method: "POST",
@@ -252,25 +265,6 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [battleMessage]);
 
-  useEffect(() => {
-    if (!session) return;
-    const notifyForfeit = () => {
-      const payload = new Blob(
-        [
-          JSON.stringify({
-            operation: "forfeit",
-            code: session.code,
-            playerId: session.playerId,
-            token: session.token,
-          }),
-        ],
-        { type: "application/json" },
-      );
-      navigator.sendBeacon("/api/game", payload);
-    };
-    window.addEventListener("pagehide", notifyForfeit);
-    return () => window.removeEventListener("pagehide", notifyForfeit);
-  }, [session]);
 
   const self = room?.players.find((player) => player.id === session?.playerId);
   const humans = room?.players.filter((player) => player.team === "humans") ?? [];
@@ -344,6 +338,10 @@ export default function Home() {
   function toggleSkill(skillId: string) {
     const skill = skillById(skillId);
     const weapon = weaponById(weaponId);
+    if (skillId === "power_strike" && weapon?.forbidsPowerStrike) {
+      setError(`${weapon.name}では渾身撃を使用できません。`);
+      return;
+    }
     if (
       skill?.requiredWeaponType &&
       weapon?.type !== skill.requiredWeaponType
@@ -372,15 +370,15 @@ export default function Home() {
       .map(skillById)
       .filter(
         (skill) =>
-          skill?.requiredWeaponType &&
-          skill.requiredWeaponType !== nextWeapon.type,
+          (skill?.requiredWeaponType &&
+            skill.requiredWeaponType !== nextWeapon.type) ||
+          (skill?.id === "power_strike" && nextWeapon.forbidsPowerStrike),
       );
     setWeaponId(nextWeaponId);
     if (incompatible.length) {
       setSkillIds((current) =>
         current.filter(
-          (id) =>
-            !incompatible.some((skill) => skill?.id === id),
+          (id) => !incompatible.some((skill) => skill?.id === id),
         ),
       );
       setError(
@@ -435,7 +433,9 @@ export default function Home() {
   const canStart =
     humans.length > 0 && monsters.length > 0 && allReady && !busy;
   const myTurn =
-    room?.status === "battle" && room.currentPlayerId === session?.playerId;
+    room?.status === "battle" &&
+    room.currentPlayerId === session?.playerId &&
+    (self?.hp ?? 0) > 0;
   const uniqueBattleItems = self
     ? [...new Set(self.itemIds)]
         .map(itemById)
@@ -696,9 +696,11 @@ export default function Home() {
                         <span className="item-stat">
                           {skill.kind === "passive"
                             ? "自動"
-                            : skill.mpCost
-                              ? `MP ${skill.mpCost}`
-                              : `待 ${skill.cooldown}`}
+                            : skill.consumeAllMp
+                              ? "MP 全消費"
+                              : skill.mpCost
+                                ? `MP ${skill.mpCost}`
+                                : `待 ${skill.cooldown}`}
                           <i>
                             {skill.requiredWeaponType === "bow"
                               ? "弓限定"
@@ -964,7 +966,9 @@ export default function Home() {
                   const wrongWeapon =
                     skill.requiredWeaponType &&
                     weaponById(self.weaponId)?.type !== skill.requiredWeaponType;
-                  const insufficientMp = (skill.mpCost ?? 0) > self.mp;
+                  const insufficientMp = skill.consumeAllMp
+                    ? self.mp <= 0
+                    : (skill.mpCost ?? 0) > self.mp;
                   const insufficientHp = (skill.hpCost ?? 0) >= self.hp;
                   const noItemSpace =
                     skill.kind === "steal" &&
@@ -1017,7 +1021,8 @@ export default function Home() {
                     const count = countOf(self?.itemIds ?? [], item!.id);
                     const allyItem =
                       item!.id === "ruby_crystal" ||
-                      item!.id === "sapphire_crystal";
+                      item!.id === "sapphire_crystal" ||
+                      item!.id === "antidote_potion";
                     return (
                       <button
                         key={item!.id}
@@ -1049,6 +1054,24 @@ export default function Home() {
                 )}
               </div>
             </div>
+
+            <aside className="battle-log" aria-label="戦闘ログ">
+              <div className="battle-log-head">
+                <div>
+                  <span>BATTLE LOG</span>
+                  <h2>過去の行動</h2>
+                </div>
+                <small>最新 {room.actions.length} 件</small>
+              </div>
+              <ol className="battle-log-list">
+                {[...room.actions].reverse().map((action) => (
+                  <li key={action.id}>
+                    <span>TURN {action.turnNumber}</span>
+                    <p>{action.message}</p>
+                  </li>
+                ))}
+              </ol>
+            </aside>
           </div>
 
           {room.status === "finished" ? (
@@ -1074,7 +1097,7 @@ export default function Home() {
       ) : null}
 
       <footer>
-        <span>CROWN &amp; CLAW — PROTOTYPE 02</span>
+        <span>CROWN &amp; CLAW — PROTOTYPE 03</span>
         <span>交互ターン制・2陣営対戦</span>
       </footer>
     </main>

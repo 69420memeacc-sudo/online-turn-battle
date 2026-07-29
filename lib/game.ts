@@ -10,6 +10,13 @@ export type Weapon = {
   type: WeaponType;
   icon: string;
   healingBonus?: number;
+  maxStatMultiplier?: number;
+  forbidsPowerStrike?: boolean;
+  ignoresDefense?: boolean;
+  actionsPerTurn?: number;
+  skipsEveryOtherTurn?: boolean;
+  alwaysPowerStrike?: boolean;
+  emeraldMultiplier?: number;
 };
 
 export type Armor = {
@@ -40,6 +47,7 @@ export type Skill = {
   kind: SkillKind;
   mpCost?: number;
   hpCost?: number;
+  consumeAllMp?: boolean;
   requiredWeaponType?: WeaponType;
 };
 
@@ -58,8 +66,10 @@ export const SKILL_LIMIT = 2;
 export const ITEM_LIMIT = 3;
 export const DEFAULT_ITEM_IDS = ["ruby_crystal", "sapphire_crystal"] as const;
 export const BATTLE_ITEM_LIMIT = ITEM_LIMIT + DEFAULT_ITEM_IDS.length;
+export const BASE_MAX_HP = 100;
 export const BASE_MAX_MP = 100;
 export const STAFF_MAX_MP = 200;
+export const DEFAULT_EMERALD_MULTIPLIER = 1.2;
 
 export const WEAPONS: Weapon[] = [
   {
@@ -73,7 +83,7 @@ export const WEAPONS: Weapon[] = [
   {
     id: "longbow",
     name: "灰木の長弓",
-    description: "黄金の光矢を放てる、狩人の長弓。",
+    description: "黄金の光矢と神の矢を放てる、狩人の長弓。",
     damage: 16,
     type: "bow",
     icon: "➳",
@@ -86,6 +96,50 @@ export const WEAPONS: Weapon[] = [
     type: "staff",
     healingBonus: 8,
     icon: "✦",
+  },
+  {
+    id: "ancient_rapier",
+    name: "古代のレイピア",
+    description:
+      "攻20。通常攻撃が防具とダイヤモンド結晶を無視するが、渾身撃は使えない。",
+    damage: 20,
+    type: "sword",
+    icon: "†",
+    forbidsPowerStrike: true,
+    ignoresDefense: true,
+  },
+  {
+    id: "demon_twin_blades",
+    name: "妖魔双刀",
+    description:
+      "攻13。同じ手番で2回行動できるが、最大HP・MPが20%低下し、渾身撃は使えない。",
+    damage: 13,
+    type: "sword",
+    icon: "⚔⚔",
+    maxStatMultiplier: 0.8,
+    forbidsPowerStrike: true,
+    actionsPerTurn: 2,
+  },
+  {
+    id: "giant_sword",
+    name: "巨人の剣",
+    description:
+      "攻35。基本攻撃が毎回渾身撃（攻45）になるが、行動後は次の自分の手番を休む。",
+    damage: 35,
+    type: "sword",
+    icon: "▰",
+    skipsEveryOtherTurn: true,
+    alwaysPowerStrike: true,
+  },
+  {
+    id: "elzarem_staff",
+    name: "緑精霊エルザレムの杖",
+    description:
+      "攻8。基礎最大MPが200になり、エメラルド結晶1個の倍率が1.4倍になる。",
+    damage: 8,
+    type: "staff",
+    icon: "♧",
+    emeraldMultiplier: 1.4,
   },
 ];
 
@@ -101,7 +155,8 @@ export const ARMORS: Armor[] = [
   {
     id: "leather",
     name: "狩人の革鎧",
-    description: "受けるダメージを2軽減する軽装備。",
+    description:
+      "受けるダメージを2軽減する軽装備。残忍のHP・MP回復量が50%から66%になる。",
     defense: 2,
     icon: "◈",
     image: "/icons/armor-leather.png",
@@ -148,11 +203,22 @@ export const SKILLS: Skill[] = [
     id: "golden_arrow",
     name: "黄金の光矢",
     description:
-      "MP35で指定した敵に攻45。エメラルドの結晶の倍率が適用される。弓装備時のみ。",
+      "MP55で指定した敵に攻40。エメラルドの結晶の倍率が適用される。弓装備時のみ。",
     cooldown: 0,
     icon: "☀",
     kind: "magic",
-    mpCost: 35,
+    mpCost: 55,
+    requiredWeaponType: "bow",
+  },
+  {
+    id: "divine_arrow",
+    name: "神の矢",
+    description:
+      "残りMPをすべて消費し、その33%を攻撃力として敵軍全員に与える。弓装備時のみ。",
+    cooldown: 0,
+    icon: "✧",
+    kind: "magic",
+    consumeAllMp: true,
     requiredWeaponType: "bow",
   },
   {
@@ -185,7 +251,8 @@ export const SKILLS: Skill[] = [
   {
     id: "cruelty",
     name: "残忍",
-    description: "敵を倒すと自動でHPとMPを最大値の50%回復。",
+    description:
+      "敵を倒すと自動でHPとMPを最大値の50%回復。狩人の革鎧なら66%回復。",
     cooldown: 0,
     icon: "♰",
     kind: "passive",
@@ -225,10 +292,25 @@ export const ITEMS: GameItem[] = [
     image: "/icons/item-heavens-scale.png",
   },
   {
+    id: "poison_potion",
+    name: "毒ポーション",
+    description:
+      "指定した敵1人を毒状態にする。毒は本人の手番開始時に6ダメージを与え、解毒まで続く。",
+    kind: "consumable",
+    image: "/icons/item-poison-potion.svg",
+  },
+  {
+    id: "antidote_potion",
+    name: "解毒ポーション",
+    description: "自身または味方1人の毒状態を解除する。",
+    kind: "consumable",
+    image: "/icons/item-antidote-potion.svg",
+  },
+  {
     id: "emerald_crystal",
     name: "エメラルドの結晶",
     description:
-      "所持中、通常攻撃・渾身撃・黄金の光矢が1個につき25%増加。重複可。",
+      "所持中、通常攻撃・渾身撃・黄金の光矢が1個につき20%増加。緑精霊エルザレムの杖なら40%増加。重複可。",
     kind: "passive",
     image: "/icons/item-emerald-crystal.png",
   },
@@ -246,11 +328,17 @@ export const weaponById = (id: string) =>
   WEAPONS.find((item) => item.id === id);
 export const armorById = (id: string) =>
   ARMORS.find((item) => item.id === id);
+export const maxHpForLoadout = (weaponId: string) => {
+  const weapon = weaponById(weaponId);
+  return Math.floor(BASE_MAX_HP * (weapon?.maxStatMultiplier ?? 1));
+};
 export const maxMpForLoadout = (weaponId: string, armorId: string) => {
   const weapon = weaponById(weaponId);
   const armor = armorById(armorId);
   const baseMp = weapon?.type === "staff" ? STAFF_MAX_MP : BASE_MAX_MP;
-  return baseMp + (armor?.mpBonus ?? 0);
+  return Math.floor(
+    (baseMp + (armor?.mpBonus ?? 0)) * (weapon?.maxStatMultiplier ?? 1),
+  );
 };
 export const skillById = (id: string) =>
   SKILLS.find((item) => item.id === id);
@@ -272,6 +360,7 @@ export type PublicPlayer = {
   itemIds: string[];
   cooldowns: Record<string, number>;
   sleepTurns: number;
+  poisoned: boolean;
   ready: boolean;
 };
 

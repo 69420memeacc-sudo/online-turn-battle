@@ -1036,13 +1036,84 @@ select:focus-visible {
 }
 
 .battle-console {
-  display: block;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: 18px;
   margin-top: 18px;
+  align-items: start;
 }
 
 .action-panel,
 .battle-log {
   padding: 22px;
+}
+
+.battle-log {
+  position: sticky;
+  top: 18px;
+  min-width: 0;
+}
+
+.battle-log-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.battle-log-head span {
+  color: var(--gold);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+.battle-log-head h2 {
+  margin: 5px 0 0;
+  font-family: "Yu Mincho", serif;
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.battle-log-head small {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.battle-log-list {
+  display: grid;
+  max-height: 520px;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-color: rgba(199, 166, 100, 0.45) transparent;
+}
+
+.battle-log-list li {
+  padding: 13px 2px;
+  border-bottom: 1px solid rgba(222, 210, 184, 0.09);
+}
+
+.battle-log-list li > span {
+  color: var(--gold);
+  font: 700 8px/1 Arial, sans-serif;
+  letter-spacing: 0.12em;
+}
+
+.battle-log-list p {
+  margin: 6px 0 0;
+  color: #bbb7ad;
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.poisoned {
+  color: #9bd85e !important;
+  border-color: rgba(155, 216, 94, 0.34) !important;
 }
 
 .battle-message-popup {
@@ -1384,7 +1455,8 @@ footer {
     grid-template-columns: 1fr;
   }
 
-  .roster-panel {
+  .roster-panel,
+  .battle-log {
     position: static;
   }
 

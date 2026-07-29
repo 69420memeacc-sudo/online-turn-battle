@@ -36,6 +36,13 @@
       "when": 1785291842283,
       "tag": "0004_lying_blonde_phantom",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1785297690277,
+      "tag": "0005_slimy_smasher",
+      "breakpoints": true
     }
   ]
 }

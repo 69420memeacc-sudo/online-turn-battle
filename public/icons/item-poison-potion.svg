@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="毒ポーション">
+  <defs>
+    <linearGradient id="b" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d8d4c7"/>
+      <stop offset="1" stop-color="#696b66"/>
+    </linearGradient>
+    <linearGradient id="p" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b9ff54"/>
+      <stop offset="1" stop-color="#3f7d18"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="18" fill="#161916"/>
+  <path d="M38 13h20v13l8 9c5 6 8 13 8 21 0 17-12 27-26 27S22 73 22 56c0-8 3-15 8-21l8-9z" fill="url(#b)" stroke="#ece5cf" stroke-width="3"/>
+  <path d="M27 54c7-5 14 3 21-1 8-5 14 1 21-1 1 17-8 25-21 25-12 0-21-8-21-23z" fill="url(#p)"/>
+  <path d="M35 18h26" stroke="#c8aa66" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="39" cy="62" r="3" fill="#d6ff88"/><circle cx="55" cy="68" r="4" fill="#d6ff88"/>
+  <path d="M41 43l14 14m0-14L41 57" stroke="#16210f" stroke-width="5" stroke-linecap="round"/>
+</svg>
