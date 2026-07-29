@@ -40,6 +40,8 @@ test("ships the Crown & Claw entrance and online game flow", async () => {
   assert.match(game, /MP35で指定した敵に攻45/);
   assert.match(game, /1個につき25%増加/);
   assert.match(route, /1\.25 \*\* countItem/);
+  assert.match(route, /actionId === "power_strike"/);
+  assert.match(game, /渾身撃・黄金の光矢/);
   assert.match(route, /\[\.\.\.DEFAULT_ITEM_IDS, \.\.\.itemIds\]/);
   assert.match(page, /各1個を標準支給/);
   assert.match(page, /battle-message-popup/);

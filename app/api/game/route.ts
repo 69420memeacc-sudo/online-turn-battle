@@ -980,7 +980,11 @@ export async function POST(request: Request) {
         let rawDamage =
           actionId === "power_strike" ? weapon.damage + 10 : weapon.damage;
         if (actionId === "golden_arrow") rawDamage = 45;
-        if (isBasic || actionId === "golden_arrow") {
+        if (
+          isBasic ||
+          actionId === "power_strike" ||
+          actionId === "golden_arrow"
+        ) {
           rawDamage = Math.floor(
             rawDamage *
               1.25 ** countItem(active.itemList, "emerald_crystal"),

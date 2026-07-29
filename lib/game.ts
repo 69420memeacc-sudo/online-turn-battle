@@ -121,7 +121,8 @@ export const SKILLS: Skill[] = [
   {
     id: "power_strike",
     name: "渾身撃",
-    description: "武器攻撃力に10を加えた強力な一撃。",
+    description:
+      "武器攻撃力に10を加えた強力な一撃。エメラルドの結晶の倍率が適用される。",
     cooldown: 2,
     icon: "✹",
     kind: "attack",
@@ -227,7 +228,7 @@ export const ITEMS: GameItem[] = [
     id: "emerald_crystal",
     name: "エメラルドの結晶",
     description:
-      "所持中、通常攻撃と黄金の光矢が1個につき25%増加。重複可。",
+      "所持中、通常攻撃・渾身撃・黄金の光矢が1個につき25%増加。重複可。",
     kind: "passive",
     image: "/icons/item-emerald-crystal.png",
   },
