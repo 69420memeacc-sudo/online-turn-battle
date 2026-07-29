@@ -1,12 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import {
   ARMORS,
-  INVENTORY_LIMIT,
+  ITEMS,
+  ITEM_LIMIT,
   SKILLS,
+  SKILL_LIMIT,
   WEAPONS,
   armorById,
+  itemById,
   skillById,
   weaponById,
   type PublicPlayer,
@@ -32,6 +36,10 @@ function teamLabel(team: Team) {
   return team === "humans" ? "人間軍" : "魔物軍";
 }
 
+function countOf(ids: string[], id: string) {
+  return ids.filter((currentId) => currentId === id).length;
+}
+
 function PlayerCard({
   player,
   active,
@@ -42,6 +50,10 @@ function PlayerCard({
   self: boolean;
 }) {
   const hpPercent = Math.max(0, (player.hp / player.maxHp) * 100);
+  const mpPercent = Math.max(0, (player.mp / player.maxMp) * 100);
+  const passives = player.itemIds
+    .map(itemById)
+    .filter((item) => item?.kind === "passive");
   return (
     <article
       className={`fighter-card ${player.team} ${active ? "active" : ""} ${
@@ -54,17 +66,44 @@ function PlayerCard({
           {self ? <small>あなた</small> : null}
         </span>
         <span className="fighter-hp">
-          {player.hp}/{player.maxHp}
+          HP {player.hp}/{player.maxHp}
         </span>
       </div>
       <div className="hp-track" aria-label={`${player.name}のHP ${player.hp}`}>
         <span style={{ width: `${hpPercent}%` }} />
       </div>
-      <div className="fighter-meta">
-        <span>{weaponById(player.weaponId)?.icon} {weaponById(player.weaponId)?.name}</span>
-        <span>{armorById(player.armorId)?.icon} 防御 {armorById(player.armorId)?.defense}</span>
-        {player.barrier > 0 ? <span className="barrier">⬟ 防壁 {player.barrier}</span> : null}
+      <div className="mp-line">
+        <div className="mp-track" aria-label={`${player.name}のMP ${player.mp}`}>
+          <span style={{ width: `${mpPercent}%` }} />
+        </div>
+        <small>MP {player.mp}/{player.maxMp}</small>
       </div>
+      <div className="fighter-meta">
+        <span>
+          {weaponById(player.weaponId)?.icon}{" "}
+          {weaponById(player.weaponId)?.name}
+        </span>
+        <span>
+          {armorById(player.armorId)?.icon} 防御{" "}
+          {armorById(player.armorId)?.defense}
+        </span>
+        {player.barrier > 0 ? (
+          <span className="barrier">⬟ 防壁 {player.barrier}</span>
+        ) : null}
+        {player.sleepTurns > 0 ? (
+          <span className="sleeping">☾ 睡眠 {player.sleepTurns}</span>
+        ) : null}
+      </div>
+      {passives.length ? (
+        <div className="passive-row">
+          {passives.map((item, index) => (
+            <span key={`${item!.id}-${index}`} title={item!.name}>
+              <Image src={item!.image} alt="" width={16} height={16} />
+              {item!.name}
+            </span>
+          ))}
+        </div>
+      ) : null}
       {active ? <div className="turn-ribbon">行動中</div> : null}
     </article>
   );
@@ -73,49 +112,54 @@ function PlayerCard({
 export default function Home() {
   const [name, setName] = useState("");
   const [team, setTeam] = useState<Team>("humans");
-  const [joinCode, setJoinCode] = useState("");
+  const [joinCode, setJoinCode] = useState(() =>
+    typeof window === "undefined"
+      ? ""
+      : (new URLSearchParams(window.location.search).get("room") ?? "")
+          .toUpperCase()
+          .slice(0, 6),
+  );
   const [session, setSession] = useState<GameSession | null>(null);
   const [room, setRoom] = useState<PublicRoom | null>(null);
   const [weaponId, setWeaponId] = useState("longsword");
   const [armorId, setArmorId] = useState("chainmail");
   const [skillIds, setSkillIds] = useState<string[]>(["guard", "mend"]);
-  const [targetId, setTargetId] = useState("");
+  const [itemIds, setItemIds] = useState<string[]>([]);
+  const [enemyTargetId, setEnemyTargetId] = useState("");
+  const [allyTargetId, setAllyTargetId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const requestGame = useCallback(
-    async (body: Record<string, unknown>) => {
-      setBusy(true);
-      setError("");
-      try {
-        const response = await fetch("/api/game", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        const result = (await response.json()) as ApiResult;
-        if (!response.ok) throw new Error(result.error || "操作に失敗しました。");
-        if (result.session) {
-          setSession(result.session);
-          localStorage.setItem(SESSION_KEY, JSON.stringify(result.session));
-          window.history.replaceState(null, "", `?room=${result.session.code}`);
-        }
-        if (result.room) setRoom(result.room);
-        return result;
-      } catch (requestError) {
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : "操作に失敗しました。",
-        );
-        return null;
-      } finally {
-        setBusy(false);
+  const requestGame = useCallback(async (body: Record<string, unknown>) => {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/game", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result = (await response.json()) as ApiResult;
+      if (!response.ok) throw new Error(result.error || "操作に失敗しました。");
+      if (result.session) {
+        setSession(result.session);
+        localStorage.setItem(SESSION_KEY, JSON.stringify(result.session));
+        window.history.replaceState(null, "", `?room=${result.session.code}`);
       }
-    },
-    [],
-  );
+      if (result.room) setRoom(result.room);
+      return result;
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "操作に失敗しました。",
+      );
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }, []);
 
   const refreshRoom = useCallback(async (code: string) => {
     try {
@@ -131,14 +175,15 @@ export default function Home() {
 
   useEffect(() => {
     const queryCode = new URLSearchParams(window.location.search).get("room");
-    if (queryCode) setJoinCode(queryCode.toUpperCase().slice(0, 6));
     const saved = localStorage.getItem(SESSION_KEY);
     if (!saved) return;
     try {
       const restored = JSON.parse(saved) as GameSession;
       if (!queryCode || restored.code === queryCode.toUpperCase()) {
-        setSession(restored);
-        void refreshRoom(restored.code);
+        queueMicrotask(() => {
+          setSession(restored);
+          void refreshRoom(restored.code);
+        });
       }
     } catch {
       localStorage.removeItem(SESSION_KEY);
@@ -157,41 +202,37 @@ export default function Home() {
   const humans = room?.players.filter((player) => player.team === "humans") ?? [];
   const monsters =
     room?.players.filter((player) => player.team === "monsters") ?? [];
-  const enemies =
-    room?.players.filter(
-      (player) => player.team !== self?.team && player.hp > 0,
-    ) ?? [];
-  const inventoryUsed = useMemo(() => {
-    const weapon = weaponById(weaponId);
-    const armor = armorById(armorId);
-    return (
-      (weapon?.slots ?? 0) +
-      (armor?.slots ?? 0) +
-      skillIds.reduce(
-        (total, selectedId) => total + (skillById(selectedId)?.slots ?? 0),
-        0,
-      )
-    );
-  }, [armorId, skillIds, weaponId]);
-
-  useEffect(() => {
-    if (!targetId && enemies[0]) setTargetId(enemies[0].id);
-    if (targetId && !enemies.some((player) => player.id === targetId)) {
-      setTargetId(enemies[0]?.id ?? "");
-    }
-  }, [enemies, targetId]);
+  const enemies = useMemo(
+    () =>
+      room?.players.filter(
+        (player) => player.team !== self?.team && player.hp > 0,
+      ) ?? [],
+    [room?.players, self?.team],
+  );
+  const allies = useMemo(
+    () =>
+      room?.players.filter(
+        (player) => player.team === self?.team && player.hp > 0,
+      ) ?? [],
+    [room?.players, self?.team],
+  );
+  const selectedEnemyTargetId = enemies.some(
+    (player) => player.id === enemyTargetId,
+  )
+    ? enemyTargetId
+    : (enemies[0]?.id ?? "");
+  const selectedAllyTargetId = allies.some(
+    (player) => player.id === allyTargetId,
+  )
+    ? allyTargetId
+    : (self?.id ?? allies[0]?.id ?? "");
 
   function createRoom() {
     void requestGame({ operation: "create", name, team });
   }
 
   function joinRoom() {
-    void requestGame({
-      operation: "join",
-      code: joinCode,
-      name,
-      team,
-    });
+    void requestGame({ operation: "join", code: joinCode, name, team });
   }
 
   function authenticatedBody(operation: string) {
@@ -207,7 +248,7 @@ export default function Home() {
   function saveLoadout() {
     const auth = authenticatedBody("loadout");
     if (!auth) return;
-    void requestGame({ ...auth, weaponId, armorId, skillIds });
+    void requestGame({ ...auth, weaponId, armorId, skillIds, itemIds });
   }
 
   function startBattle() {
@@ -215,10 +256,48 @@ export default function Home() {
     if (auth) void requestGame(auth);
   }
 
-  function act(actionId: string) {
+  function act(actionId: string, targetId = selectedEnemyTargetId) {
     const auth = authenticatedBody("act");
     if (!auth) return;
     void requestGame({ ...auth, actionId, targetId });
+  }
+
+  function toggleSkill(skillId: string) {
+    setSkillIds((current) => {
+      if (current.includes(skillId)) {
+        return current.filter((id) => id !== skillId);
+      }
+      if (current.length >= SKILL_LIMIT) {
+        setError(`スキルと魔法は合わせて${SKILL_LIMIT}枠までです。`);
+        return current;
+      }
+      return [...current, skillId];
+    });
+  }
+
+  function addItem(itemId: string) {
+    const item = itemById(itemId);
+    if (!item) return;
+    setItemIds((current) => {
+      const count = countOf(current, itemId);
+      if (current.length >= ITEM_LIMIT) {
+        setError(`アイテムは${ITEM_LIMIT}個までです。`);
+        return current;
+      }
+      if (item.maxCopies && count >= item.maxCopies) {
+        setError(`${item.name}は${item.maxCopies}個までです。`);
+        return current;
+      }
+      return [...current, itemId];
+    });
+  }
+
+  function removeItem(itemId: string) {
+    setItemIds((current) => {
+      const index = current.lastIndexOf(itemId);
+      if (index < 0) return current;
+      return current.filter((_, currentIndex) => currentIndex !== index);
+    });
   }
 
   function leaveRoom() {
@@ -243,6 +322,11 @@ export default function Home() {
     humans.length > 0 && monsters.length > 0 && allReady && !busy;
   const myTurn =
     room?.status === "battle" && room.currentPlayerId === session?.playerId;
+  const uniqueBattleItems = self
+    ? [...new Set(self.itemIds)]
+        .map(itemById)
+        .filter((item) => item?.kind === "consumable")
+    : [];
 
   return (
     <main className="game-shell">
@@ -250,7 +334,9 @@ export default function Home() {
         <button className="brand" onClick={leaveRoom} aria-label="タイトルへ戻る">
           <span className="brand-crown">♛</span>
           <span>
-            <strong>CROWN <i>&amp;</i> CLAW</strong>
+            <strong>
+              CROWN <i>&amp;</i> CLAW
+            </strong>
             <small>剣と爪、交互に刻む戦場</small>
           </span>
         </button>
@@ -278,13 +364,19 @@ export default function Home() {
               <em>選んだ装備で勝ち残れ。</em>
             </h1>
             <p className="lead">
-              武器、防具、スキルを6枠に編成。仲間と陣営を組み、
-              一手ずつ相手の命運を削るオンライン戦術バトル。
+              武器と防具、2つの技、3つのアイテムを編成。
+              仲間と陣営を組み、HPとMPを読み合うオンライン戦術バトル。
             </p>
             <div className="feature-row">
-              <span><b>01</b> 装備を編成</span>
-              <span><b>02</b> 部屋へ集結</span>
-              <span><b>03</b> 交互に行動</span>
+              <span>
+                <b>01</b> 装備を編成
+              </span>
+              <span>
+                <b>02</b> 部屋へ集結
+              </span>
+              <span>
+                <b>03</b> 交互に行動
+              </span>
             </div>
           </div>
 
@@ -332,7 +424,9 @@ export default function Home() {
             >
               {busy ? "門を開いています…" : "新しい戦場を作る"}
             </button>
-            <div className="divider"><span>または招待から参加</span></div>
+            <div className="divider">
+              <span>または招待から参加</span>
+            </div>
             <div className="join-row">
               <input
                 value={joinCode}
@@ -364,12 +458,14 @@ export default function Home() {
             <div>
               <p className="eyebrow">WAR ROOM / {room.code}</p>
               <h1>出陣準備</h1>
-              <p>6枠以内で装備を整え、両軍の準備完了を待ちます。</p>
+              <p>武器1・防具1・技2・アイテム3で編成します。</p>
             </div>
             <div className="room-code-box">
               <small>招待コード</small>
               <strong>{room.code}</strong>
-              <button onClick={copyInvite}>{copied ? "コピー済み" : "招待URLをコピー"}</button>
+              <button onClick={copyInvite}>
+                {copied ? "コピー済み" : "招待URLをコピー"}
+              </button>
             </div>
           </div>
 
@@ -380,18 +476,25 @@ export default function Home() {
                   <span>LOADOUT</span>
                   <h2>持ち込み装備</h2>
                 </div>
-                <div className={inventoryUsed > INVENTORY_LIMIT ? "slots over" : "slots"}>
-                  <b>{inventoryUsed}</b> / {INVENTORY_LIMIT} 枠
+                <div className="loadout-limits">
+                  技 {skillIds.length}/{SKILL_LIMIT} ・ 道具 {itemIds.length}/
+                  {ITEM_LIMIT}
                 </div>
               </div>
 
               <div className="loadout-group">
-                <h3><span>01</span> 武器を1つ選択</h3>
+                <h3>
+                  <span>01</span> 武器を1つ選択
+                </h3>
                 <div className="item-grid">
                   {WEAPONS.map((weapon) => (
                     <button
                       key={weapon.id}
-                      className={weaponId === weapon.id ? "item-card selected" : "item-card"}
+                      className={
+                        weaponId === weapon.id
+                          ? "item-card selected"
+                          : "item-card"
+                      }
                       onClick={() => setWeaponId(weapon.id)}
                     >
                       <span className="item-icon">{weapon.icon}</span>
@@ -399,56 +502,137 @@ export default function Home() {
                         <b>{weapon.name}</b>
                         <small>{weapon.description}</small>
                       </span>
-                      <span className="item-stat">攻 {weapon.damage}<i>{weapon.slots}枠</i></span>
+                      <span className="item-stat">
+                        攻 {weapon.damage}
+                        <i>{weapon.type === "staff" ? "MP 300" : "MP 100"}</i>
+                      </span>
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="loadout-group">
-                <h3><span>02</span> 防具を1つ選択</h3>
+                <h3>
+                  <span>02</span> 防具を1つ選択
+                </h3>
                 <div className="item-grid">
                   {ARMORS.map((armor) => (
                     <button
                       key={armor.id}
-                      className={armorId === armor.id ? "item-card selected" : "item-card"}
+                      className={
+                        armorId === armor.id
+                          ? "item-card selected"
+                          : "item-card"
+                      }
                       onClick={() => setArmorId(armor.id)}
                     >
-                      <span className="item-icon">{armor.icon}</span>
+                      <Image
+                        className="generated-icon"
+                        src={armor.image}
+                        alt={armor.name}
+                        width={52}
+                        height={52}
+                      />
                       <span className="item-copy">
                         <b>{armor.name}</b>
                         <small>{armor.description}</small>
                       </span>
-                      <span className="item-stat">防 {armor.defense}<i>{armor.slots}枠</i></span>
+                      <span className="item-stat">防 {armor.defense}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="loadout-group">
-                <h3><span>03</span> スキルを選択</h3>
-                <div className="item-grid">
+                <h3>
+                  <span>03</span> スキルと魔法を2つまで
+                </h3>
+                <div className="item-grid skills-grid">
                   {SKILLS.map((skill) => {
                     const selected = skillIds.includes(skill.id);
                     return (
                       <button
                         key={skill.id}
-                        className={selected ? "item-card selected" : "item-card"}
-                        onClick={() =>
-                          setSkillIds((current) =>
-                            selected
-                              ? current.filter((id) => id !== skill.id)
-                              : [...current, skill.id],
-                          )
+                        className={
+                          selected ? "item-card selected" : "item-card"
                         }
+                        onClick={() => toggleSkill(skill.id)}
                       >
                         <span className="item-icon">{skill.icon}</span>
                         <span className="item-copy">
                           <b>{skill.name}</b>
                           <small>{skill.description}</small>
                         </span>
-                        <span className="item-stat">待 {skill.cooldown}<i>{skill.slots}枠</i></span>
+                        <span className="item-stat">
+                          {skill.kind === "passive"
+                            ? "自動"
+                            : skill.mpCost
+                              ? `MP ${skill.mpCost}`
+                              : `待 ${skill.cooldown}`}
+                          <i>
+                            {skill.requiredWeaponType === "bow"
+                              ? "弓限定"
+                              : skill.requiredWeaponType === "staff"
+                                ? "杖限定"
+                                : skill.kind === "magic"
+                                  ? "魔法"
+                                  : "スキル"}
+                          </i>
+                        </span>
                       </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="loadout-group">
+                <h3>
+                  <span>04</span> アイテムを3つまで
+                </h3>
+                <div className="item-grid item-picker-grid">
+                  {ITEMS.map((item) => {
+                    const count = countOf(itemIds, item.id);
+                    const canAdd =
+                      itemIds.length < ITEM_LIMIT &&
+                      (!item.maxCopies || count < item.maxCopies);
+                    return (
+                      <article
+                        key={item.id}
+                        className={`item-card item-picker ${
+                          count ? "selected" : ""
+                        }`}
+                      >
+                        <Image
+                          className="generated-icon"
+                          src={item.image}
+                          alt={item.name}
+                          width={52}
+                          height={52}
+                        />
+                        <span className="item-copy">
+                          <b>{item.name}</b>
+                          <small>{item.description}</small>
+                        </span>
+                        <span className="item-count">×{count}</span>
+                        <div className="quantity-controls">
+                          <button
+                            type="button"
+                            onClick={() => removeItem(item.id)}
+                            disabled={!count}
+                            aria-label={`${item.name}を1つ減らす`}
+                          >
+                            −
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => addItem(item.id)}
+                            disabled={!canAdd}
+                            aria-label={`${item.name}を1つ増やす`}
+                          >
+                            ＋
+                          </button>
+                        </div>
+                      </article>
                     );
                   })}
                 </div>
@@ -457,9 +641,13 @@ export default function Home() {
               <button
                 className="primary-action loadout-save"
                 onClick={saveLoadout}
-                disabled={busy || inventoryUsed > INVENTORY_LIMIT}
+                disabled={
+                  busy ||
+                  skillIds.length > SKILL_LIMIT ||
+                  itemIds.length > ITEM_LIMIT
+                }
               >
-                {self?.ready ? "装備を更新して準備完了" : "この装備で準備完了"}
+                {self?.ready ? "編成を更新して準備完了" : "この編成で準備完了"}
               </button>
             </div>
 
@@ -471,10 +659,12 @@ export default function Home() {
                 </div>
                 <small>{room.players.length} / 8</small>
               </div>
-              {([
-                ["humans", humans],
-                ["monsters", monsters],
-              ] as [Team, PublicPlayer[]][]).map(([rosterTeam, players]) => (
+              {(
+                [
+                  ["humans", humans],
+                  ["monsters", monsters],
+                ] as [Team, PublicPlayer[]][]
+              ).map(([rosterTeam, players]) => (
                 <div className={`roster-team ${rosterTeam}`} key={rosterTeam}>
                   <h3>
                     <span>{rosterTeam === "humans" ? "♜" : "♞"}</span>
@@ -530,7 +720,11 @@ export default function Home() {
                   ? `${teamLabel(room.winnerTeam!)}の勝利`
                   : myTurn
                     ? "あなたの手番"
-                    : `${room.players.find((player) => player.id === room.currentPlayerId)?.name ?? "相手"}の手番`}
+                    : `${
+                        room.players.find(
+                          (player) => player.id === room.currentPlayerId,
+                        )?.name ?? "相手"
+                      }の手番`}
               </h1>
             </div>
             <div className="turn-counter">
@@ -541,7 +735,9 @@ export default function Home() {
 
           <div className="arena">
             <div className="army humans">
-              <div className="army-title"><span>♜</span> 人間軍 <small>THE CROWN</small></div>
+              <div className="army-title">
+                <span>♜</span> 人間軍 <small>THE CROWN</small>
+              </div>
               {humans.map((player) => (
                 <PlayerCard
                   key={player.id}
@@ -551,9 +747,14 @@ export default function Home() {
                 />
               ))}
             </div>
-            <div className="versus-mark"><span>V</span><i>S</i></div>
+            <div className="versus-mark">
+              <span>V</span>
+              <i>S</i>
+            </div>
             <div className="army monsters">
-              <div className="army-title"><span>♞</span> 魔物軍 <small>THE CLAW</small></div>
+              <div className="army-title">
+                <span>♞</span> 魔物軍 <small>THE CLAW</small>
+              </div>
               {monsters.map((player) => (
                 <PlayerCard
                   key={player.id}
@@ -572,39 +773,146 @@ export default function Home() {
                   <span>ACTIONS</span>
                   <h2>{myTurn ? "行動を選択" : "戦況を見守る"}</h2>
                 </div>
-                {enemies.length > 1 ? (
+                <div className="target-stack">
                   <label className="target-select">
-                    対象
-                    <select value={targetId} onChange={(event) => setTargetId(event.target.value)}>
+                    敵対象
+                    <select
+                      value={selectedEnemyTargetId}
+                      onChange={(event) => setEnemyTargetId(event.target.value)}
+                    >
                       {enemies.map((enemy) => (
-                        <option value={enemy.id} key={enemy.id}>{enemy.name}</option>
+                        <option value={enemy.id} key={enemy.id}>
+                          {enemy.name}
+                        </option>
                       ))}
                     </select>
                   </label>
-                ) : null}
+                  <label className="target-select">
+                    味方対象
+                    <select
+                      value={selectedAllyTargetId}
+                      onChange={(event) => setAllyTargetId(event.target.value)}
+                    >
+                      {allies.map((ally) => (
+                        <option value={ally.id} key={ally.id}>
+                          {ally.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
               </div>
+
+              <div className="resource-summary">
+                <span>
+                  HP <b>{self?.hp ?? 0}</b> / {self?.maxHp ?? 0}
+                </span>
+                <span className="mana">
+                  MP <b>{self?.mp ?? 0}</b> / {self?.maxMp ?? 0}
+                </span>
+                <span>
+                  {weaponById(self?.weaponId ?? "")?.name ?? "武器なし"}
+                </span>
+              </div>
+
+              <h3 className="action-section-title">攻撃・スキル・魔法</h3>
               <div className="action-grid">
                 <button disabled={!myTurn || busy} onClick={() => act("basic")}>
                   <span>⚔</span>
                   <b>基本攻撃</b>
-                  <small>{weaponById(self?.weaponId ?? "")?.damage ?? 0} 基礎ダメージ</small>
+                  <small>
+                    {weaponById(self?.weaponId ?? "")?.damage ?? 0} 基礎ダメージ
+                  </small>
                 </button>
                 {self?.skillIds.map((skillId) => {
                   const skill = skillById(skillId);
-                  if (!skill) return null;
+                  if (!skill || skill.kind === "passive") return null;
                   const cooldown = self.cooldowns[skillId] ?? 0;
+                  const wrongWeapon =
+                    skill.requiredWeaponType &&
+                    weaponById(self.weaponId)?.type !== skill.requiredWeaponType;
+                  const insufficientMp = (skill.mpCost ?? 0) > self.mp;
+                  const insufficientHp = (skill.hpCost ?? 0) >= self.hp;
+                  const noItemSpace =
+                    skill.kind === "steal" && self.itemIds.length >= ITEM_LIMIT;
                   return (
                     <button
                       key={skill.id}
-                      disabled={!myTurn || busy || cooldown > 0}
+                      disabled={
+                        !myTurn ||
+                        busy ||
+                        cooldown > 0 ||
+                        wrongWeapon ||
+                        insufficientMp ||
+                        insufficientHp ||
+                        noItemSpace
+                      }
                       onClick={() => act(skill.id)}
                     >
                       <span>{skill.icon}</span>
                       <b>{skill.name}</b>
-                      <small>{cooldown > 0 ? `あと${cooldown}手番` : skill.description}</small>
+                      <small>
+                        {cooldown > 0
+                          ? `あと${cooldown}手番`
+                          : wrongWeapon
+                            ? "必要な武器を装備していません"
+                            : insufficientMp
+                              ? "MP不足"
+                              : insufficientHp
+                                ? "HP不足"
+                                : noItemSpace
+                                  ? "アイテム枠が満杯"
+                                  : skill.description}
+                      </small>
                     </button>
                   );
                 })}
+                {self?.skillIds.includes("cruelty") ? (
+                  <div className="passive-skill-card">
+                    <span>♰</span>
+                    <b>残忍</b>
+                    <small>敵撃破時に自動発動</small>
+                  </div>
+                ) : null}
+              </div>
+
+              <h3 className="action-section-title">アイテム</h3>
+              <div className="action-grid consumable-grid">
+                {uniqueBattleItems.length ? (
+                  uniqueBattleItems.map((item) => {
+                    const count = countOf(self?.itemIds ?? [], item!.id);
+                    const allyItem =
+                      item!.id === "ruby_crystal" ||
+                      item!.id === "sapphire_crystal";
+                    return (
+                      <button
+                        key={item!.id}
+                        disabled={!myTurn || busy}
+                        onClick={() =>
+                          act(
+                            item!.id,
+                            allyItem
+                              ? selectedAllyTargetId
+                              : selectedEnemyTargetId,
+                          )
+                        }
+                      >
+                        <Image
+                          src={item!.image}
+                          alt=""
+                          width={40}
+                          height={40}
+                        />
+                        <b>
+                          {item!.name} ×{count}
+                        </b>
+                        <small>{item!.description}</small>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <p className="no-items">使えるアイテムはありません。</p>
+                )}
               </div>
             </div>
             <aside className="battle-log">
@@ -641,10 +949,9 @@ export default function Home() {
       ) : null}
 
       <footer>
-        <span>CROWN &amp; CLAW — PROTOTYPE 01</span>
+        <span>CROWN &amp; CLAW — PROTOTYPE 02</span>
         <span>交互ターン制・2陣営対戦</span>
       </footer>
     </main>
   );
 }
-

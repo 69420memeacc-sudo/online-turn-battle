@@ -538,6 +538,12 @@ select:focus-visible {
   color: var(--danger);
 }
 
+.loadout-limits {
+  color: var(--gold-bright);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
 .loadout-group {
   margin-top: 24px;
 }
@@ -607,6 +613,13 @@ select:focus-visible {
   font-size: 21px;
 }
 
+.generated-icon {
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(199, 166, 100, 0.28);
+  object-fit: cover;
+}
+
 .item-copy {
   display: flex;
   min-width: 0;
@@ -637,6 +650,43 @@ select:focus-visible {
   color: #747872;
   font-size: 8px;
   font-style: normal;
+}
+
+.skills-grid,
+.item-picker-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.item-picker {
+  min-height: 128px;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  cursor: default;
+}
+
+.item-count {
+  align-self: start;
+  color: var(--gold-bright);
+  font: 600 12px/1 Georgia, serif;
+}
+
+.quantity-controls {
+  display: flex;
+  grid-column: 2 / 4;
+  gap: 6px;
+}
+
+.quantity-controls button {
+  width: 35px;
+  height: 27px;
+  border: 1px solid var(--line);
+  background: #111211;
+  color: var(--gold-bright);
+  cursor: pointer;
+}
+
+.quantity-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
 }
 
 .loadout-save {
@@ -887,6 +937,32 @@ select:focus-visible {
   background: linear-gradient(90deg, #304a69, #648bb9);
 }
 
+.mp-line {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 9px;
+  margin-top: 7px;
+}
+
+.mp-line small {
+  color: #7f9dcc;
+  font: 500 8px/1 Georgia, serif;
+}
+
+.mp-track {
+  height: 4px;
+  overflow: hidden;
+  background: #0d0e0d;
+}
+
+.mp-track span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #2f4674, #668bd3);
+  transition: width 280ms ease;
+}
+
 .fighter-meta {
   display: flex;
   flex-wrap: wrap;
@@ -898,6 +974,33 @@ select:focus-visible {
 
 .fighter-meta .barrier {
   color: #8eadd0;
+}
+
+.fighter-meta .sleeping {
+  color: #aaa1e4;
+}
+
+.passive-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 9px;
+}
+
+.passive-row span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 5px;
+  border: 1px solid rgba(199, 166, 100, 0.2);
+  color: #a9a69e;
+  font-size: 7px;
+}
+
+.passive-row img {
+  width: 16px;
+  height: 16px;
+  object-fit: cover;
 }
 
 .turn-ribbon {
@@ -955,6 +1058,43 @@ select:focus-visible {
   padding: 9px;
 }
 
+.target-stack {
+  display: flex;
+  gap: 12px;
+}
+
+.resource-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.resource-summary span {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  color: #a19f97;
+  font-size: 9px;
+}
+
+.resource-summary b {
+  color: #d8d4c8;
+  font-family: Georgia, serif;
+}
+
+.resource-summary .mana,
+.resource-summary .mana b {
+  color: #88a9df;
+}
+
+.action-section-title {
+  margin: 18px 0 -7px;
+  color: #99978f;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+}
+
 .action-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1007,6 +1147,62 @@ select:focus-visible {
   font-size: 8px;
   line-height: 1.3;
   text-overflow: ellipsis;
+}
+
+.passive-skill-card {
+  display: grid;
+  min-height: 93px;
+  grid-template-columns: 36px 1fr;
+  grid-template-rows: 1fr 1fr;
+  align-items: center;
+  gap: 0 10px;
+  padding: 13px;
+  border: 1px dashed rgba(199, 166, 100, 0.35);
+  background: rgba(89, 67, 33, 0.12);
+}
+
+.passive-skill-card > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  grid-row: 1 / 3;
+  place-items: center;
+  color: var(--gold-bright);
+  border: 1px solid var(--line);
+}
+
+.passive-skill-card b {
+  align-self: end;
+  font-family: "Yu Mincho", serif;
+  font-size: 11px;
+}
+
+.passive-skill-card small {
+  align-self: start;
+  margin-top: 4px;
+  color: #767973;
+  font-size: 8px;
+}
+
+.consumable-grid button {
+  grid-template-columns: 42px 1fr;
+}
+
+.consumable-grid button > img {
+  width: 40px;
+  height: 40px;
+  grid-row: 1 / 3;
+  border: 1px solid rgba(199, 166, 100, 0.25);
+  object-fit: cover;
+}
+
+.no-items {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 18px;
+  border: 1px dashed var(--line);
+  color: #777a75;
+  font-size: 9px;
 }
 
 .log-heading {
@@ -1210,6 +1406,17 @@ footer {
     grid-template-columns: 1fr 1fr;
   }
 
+  .action-topline {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .target-stack {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
   footer {
     align-items: flex-start;
     flex-direction: column;
@@ -1244,4 +1451,3 @@ footer {
     transition-duration: 0.01ms !important;
   }
 }
-

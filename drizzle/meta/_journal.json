@@ -8,6 +8,13 @@
       "when": 1785283989725,
       "tag": "0000_lumpy_hammerhead",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1785289259495,
+      "tag": "0001_familiar_susan_delgado",
+      "breakpoints": true
     }
   ]
 }

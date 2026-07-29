@@ -1,10 +1,14 @@
 import { env } from "cloudflare:workers";
 import {
   ARMORS,
-  INVENTORY_LIMIT,
-  SKILLS,
+  BASE_MAX_MP,
+  ITEMS,
+  ITEM_LIMIT,
+  SKILL_LIMIT,
+  STAFF_MAX_MP,
   WEAPONS,
   armorById,
+  itemById,
   skillById,
   weaponById,
   type ActionLog,
@@ -33,13 +37,23 @@ type PlayerRow = {
   team: Team;
   hp: number;
   max_hp: number;
+  mp: number;
+  max_mp: number;
   barrier: number;
   weapon_id: string;
   armor_id: string;
   skill_ids: string;
+  item_ids: string;
   cooldowns: string;
+  sleep_turns: number;
   ready: number;
   joined_at: string;
+};
+
+type BattlePlayer = PlayerRow & {
+  cooldownMap: Record<string, number>;
+  skillList: string[];
+  itemList: string[];
 };
 
 type ActionRow = {
@@ -55,9 +69,7 @@ type ActionRow = {
 
 function getD1() {
   const db = env.DB as D1Database | undefined;
-  if (!db) {
-    throw new Error("対戦データベースへ接続できませんでした。");
-  }
+  if (!db) throw new Error("対戦データベースへ接続できませんでした。");
   return db;
 }
 
@@ -88,11 +100,15 @@ async function ensureSchema(db: D1Database) {
         team TEXT NOT NULL,
         hp INTEGER NOT NULL DEFAULT 100,
         max_hp INTEGER NOT NULL DEFAULT 100,
+        mp INTEGER NOT NULL DEFAULT 100,
+        max_mp INTEGER NOT NULL DEFAULT 100,
         barrier INTEGER NOT NULL DEFAULT 0,
         weapon_id TEXT NOT NULL DEFAULT 'longsword',
         armor_id TEXT NOT NULL DEFAULT 'chainmail',
         skill_ids TEXT NOT NULL DEFAULT '["guard","mend"]',
+        item_ids TEXT NOT NULL DEFAULT '[]',
         cooldowns TEXT NOT NULL DEFAULT '{}',
+        sleep_turns INTEGER NOT NULL DEFAULT 0,
         ready INTEGER NOT NULL DEFAULT 0,
         joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (room_id) REFERENCES rooms(id)
@@ -120,6 +136,22 @@ async function ensureSchema(db: D1Database) {
       "CREATE INDEX IF NOT EXISTS actions_room_idx ON actions (room_id, turn_number)",
     ),
   ]);
+
+  const info = await db.prepare("PRAGMA table_info(players)").all<{
+    name: string;
+  }>();
+  const columns = new Set(info.results.map((column) => column.name));
+  const additions = [
+    ["mp", "INTEGER NOT NULL DEFAULT 100"],
+    ["max_mp", "INTEGER NOT NULL DEFAULT 100"],
+    ["item_ids", "TEXT NOT NULL DEFAULT '[]'"],
+    ["sleep_turns", "INTEGER NOT NULL DEFAULT 0"],
+  ] as const;
+  for (const [name, definition] of additions) {
+    if (!columns.has(name)) {
+      await db.prepare(`ALTER TABLE players ADD COLUMN ${name} ${definition}`).run();
+    }
+  }
 }
 
 function parseJson<T>(value: string, fallback: T): T {
@@ -137,11 +169,15 @@ function publicPlayer(row: PlayerRow): PublicPlayer {
     team: row.team,
     hp: row.hp,
     maxHp: row.max_hp,
+    mp: row.mp,
+    maxMp: row.max_mp,
     barrier: row.barrier,
     weaponId: row.weapon_id,
     armorId: row.armor_id,
     skillIds: parseJson<string[]>(row.skill_ids, []),
+    itemIds: parseJson<string[]>(row.item_ids, []),
     cooldowns: parseJson<Record<string, number>>(row.cooldowns, {}),
+    sleepTurns: row.sleep_turns,
     ready: Boolean(row.ready),
   };
 }
@@ -151,22 +187,22 @@ async function getRoomState(db: D1Database, code: string): Promise<PublicRoom> {
     .prepare("SELECT * FROM rooms WHERE code = ?")
     .bind(code)
     .first<RoomRow>();
-  if (!room) {
-    throw new Response("部屋が見つかりません。", { status: 404 });
-  }
+  if (!room) throw new Response("部屋が見つかりません。", { status: 404 });
 
-  const playersResult = await db
-    .prepare(
-      "SELECT * FROM players WHERE room_id = ? ORDER BY joined_at ASC, id ASC",
-    )
-    .bind(room.id)
-    .all<PlayerRow>();
-  const actionsResult = await db
-    .prepare(
-      "SELECT id, turn_number, actor_id, target_id, action_id, amount, message, created_at FROM actions WHERE room_id = ? ORDER BY turn_number DESC LIMIT 20",
-    )
-    .bind(room.id)
-    .all<ActionRow>();
+  const [playersResult, actionsResult] = await Promise.all([
+    db
+      .prepare(
+        "SELECT * FROM players WHERE room_id = ? ORDER BY joined_at ASC, id ASC",
+      )
+      .bind(room.id)
+      .all<PlayerRow>(),
+    db
+      .prepare(
+        "SELECT id, turn_number, actor_id, target_id, action_id, amount, message, created_at FROM actions WHERE room_id = ? ORDER BY turn_number DESC LIMIT 30",
+      )
+      .bind(room.id)
+      .all<ActionRow>(),
+  ]);
 
   const actions: ActionLog[] = actionsResult.results.reverse().map((action) => ({
     id: action.id,
@@ -218,6 +254,15 @@ function randomCode() {
 function randomToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(24));
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function randomIndex(length: number) {
+  if (length <= 1) return 0;
+  const maximum = Math.floor(256 / length) * length;
+  const byte = new Uint8Array(1);
+  do crypto.getRandomValues(byte);
+  while (byte[0] >= maximum);
+  return byte[0] % length;
 }
 
 async function hashToken(token: string) {
@@ -277,6 +322,48 @@ function errorResponse(error: unknown) {
   );
 }
 
+function countItem(itemIds: string[], id: string) {
+  return itemIds.filter((itemId) => itemId === id).length;
+}
+
+function validateItems(itemIds: string[]) {
+  if (itemIds.length > ITEM_LIMIT || itemIds.some((id) => !itemById(id))) {
+    return false;
+  }
+  return ITEMS.every(
+    (item) =>
+      !item.maxCopies || countItem(itemIds, item.id) <= item.maxCopies,
+  );
+}
+
+function damagePlayer(
+  target: BattlePlayer,
+  rawDamage: number,
+): { dealt: number; absorbed: number } {
+  const armor = armorById(target.armor_id) ?? ARMORS[0];
+  let damage = Math.max(1, Math.floor(rawDamage) - armor.defense);
+  if (target.itemList.includes("diamond_crystal")) {
+    damage = Math.floor(damage * 0.8);
+  }
+  const absorbed = Math.min(target.barrier, damage);
+  target.barrier -= absorbed;
+  damage -= absorbed;
+  if (target.itemList.includes("diamond_crystal")) {
+    damage = Math.min(50, damage);
+  }
+  target.hp = Math.max(0, target.hp - damage);
+  return { dealt: damage, absorbed };
+}
+
+function cooldownTick(player: BattlePlayer) {
+  player.cooldownMap = Object.fromEntries(
+    Object.entries(player.cooldownMap).map(([id, turns]) => [
+      id,
+      Math.max(0, turns - 1),
+    ]),
+  );
+}
+
 export async function GET(request: Request) {
   try {
     const db = getD1();
@@ -310,8 +397,7 @@ export async function POST(request: Request) {
 
       let code = randomCode();
       for (let attempt = 0; attempt < 4; attempt += 1) {
-        const exists = await roomRow(db, code);
-        if (!exists) break;
+        if (!(await roomRow(db, code))) break;
         code = randomCode();
       }
 
@@ -408,32 +494,39 @@ export async function POST(request: Request) {
       const skillIds = Array.isArray(body.skillIds)
         ? [...new Set(body.skillIds.map(String))]
         : [];
+      const itemIds = Array.isArray(body.itemIds)
+        ? body.itemIds.map(String)
+        : [];
       const weapon = weaponById(weaponId);
       const armor = armorById(armorId);
-      const skills = skillIds.map(skillById);
       if (
         !weapon ||
         !armor ||
-        skills.some((skill) => !skill) ||
-        skillIds.length > SKILLS.length
+        skillIds.length > SKILL_LIMIT ||
+        skillIds.some((id) => !skillById(id)) ||
+        !validateItems(itemIds)
       ) {
-        return Response.json({ error: "装備の選択が不正です。" }, { status: 400 });
-      }
-      const usedSlots =
-        weapon.slots +
-        armor.slots +
-        skills.reduce((total, skill) => total + (skill?.slots ?? 0), 0);
-      if (usedSlots > INVENTORY_LIMIT) {
         return Response.json(
-          { error: `持ち込み枠は${INVENTORY_LIMIT}までです。` },
+          {
+            error: `武器1・防具1・スキル/魔法${SKILL_LIMIT}枠・アイテム${ITEM_LIMIT}枠で編成してください。`,
+          },
           { status: 400 },
         );
       }
+      const maxMp = weapon.type === "staff" ? STAFF_MAX_MP : BASE_MAX_MP;
       await db
         .prepare(
-          "UPDATE players SET weapon_id = ?, armor_id = ?, skill_ids = ?, ready = 1 WHERE id = ?",
+          "UPDATE players SET weapon_id = ?, armor_id = ?, skill_ids = ?, item_ids = ?, mp = ?, max_mp = ?, ready = 1 WHERE id = ?",
         )
-        .bind(weaponId, armorId, JSON.stringify(skillIds), actor.id)
+        .bind(
+          weaponId,
+          armorId,
+          JSON.stringify(skillIds),
+          JSON.stringify(itemIds),
+          maxMp,
+          maxMp,
+          actor.id,
+        )
         .run();
       return Response.json({ room: await getRoomState(db, code) });
     }
@@ -473,12 +566,25 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
-      await db
-        .prepare(
-          "UPDATE rooms SET status = 'battle', current_player_id = ?, turn_number = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        )
-        .bind(humans[0].id, room.id)
-        .run();
+      const statements: D1PreparedStatement[] = result.results.map((player) => {
+        const maxMp =
+          weaponById(player.weapon_id)?.type === "staff"
+            ? STAFF_MAX_MP
+            : BASE_MAX_MP;
+        return db
+          .prepare(
+            "UPDATE players SET hp = max_hp, mp = ?, max_mp = ?, barrier = 0, cooldowns = '{}', sleep_turns = 0 WHERE id = ?",
+          )
+          .bind(maxMp, maxMp, player.id);
+      });
+      statements.push(
+        db
+          .prepare(
+            "UPDATE rooms SET status = 'battle', current_player_id = ?, turn_number = 1, winner_team = NULL, human_cursor = 0, monster_cursor = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+          )
+          .bind(humans[0].id, room.id),
+      );
+      await db.batch(statements);
       return Response.json({ room: await getRoomState(db, code) });
     }
 
@@ -502,20 +608,35 @@ export async function POST(request: Request) {
         )
         .bind(room.id)
         .all<PlayerRow>();
-      const players = result.results.map((player) => ({
+      const players: BattlePlayer[] = result.results.map((player) => ({
         ...player,
         cooldownMap: parseJson<Record<string, number>>(player.cooldowns, {}),
+        skillList: parseJson<string[]>(player.skill_ids, []),
+        itemList: parseJson<string[]>(player.item_ids, []),
       }));
       const active = players.find((player) => player.id === actor.id)!;
       const actionId = String(body.actionId ?? "basic");
       const selectedSkill = skillById(actionId);
+      const selectedItem = itemById(actionId);
+      const isBasic = actionId === "basic";
+
       if (
-        actionId !== "basic" &&
-        (!selectedSkill ||
-          !parseJson<string[]>(active.skill_ids, []).includes(actionId))
+        !isBasic &&
+        !(
+          (selectedSkill && active.skillList.includes(actionId)) ||
+          (selectedItem &&
+            selectedItem.kind === "consumable" &&
+            active.itemList.includes(actionId))
+        )
       ) {
         return Response.json(
-          { error: "そのスキルは持ち込んでいません。" },
+          { error: "その技またはアイテムは持ち込んでいません。" },
+          { status: 400 },
+        );
+      }
+      if (selectedSkill?.kind === "passive") {
+        return Response.json(
+          { error: "残忍は敵を倒した時に自動発動します。" },
           { status: 400 },
         );
       }
@@ -526,57 +647,193 @@ export async function POST(request: Request) {
         );
       }
 
+      const weapon = weaponById(active.weapon_id) ?? WEAPONS[0];
+      if (
+        selectedSkill?.requiredWeaponType &&
+        weapon.type !== selectedSkill.requiredWeaponType
+      ) {
+        return Response.json(
+          { error: "現在の武器ではその技を使用できません。" },
+          { status: 400 },
+        );
+      }
+      if ((selectedSkill?.mpCost ?? 0) > active.mp) {
+        return Response.json({ error: "MPが足りません。" }, { status: 400 });
+      }
+      if ((selectedSkill?.hpCost ?? 0) >= active.hp) {
+        return Response.json(
+          { error: "この技にはHPが81以上必要です。" },
+          { status: 400 },
+        );
+      }
+
       const enemyTeam: Team =
         active.team === "humans" ? "monsters" : "humans";
       const enemyCandidates = players.filter(
         (player) => player.team === enemyTeam && player.hp > 0,
       );
-      let target = enemyCandidates.find(
-        (player) => player.id === String(body.targetId ?? ""),
+      const allyCandidates = players.filter(
+        (player) => player.team === active.team && player.hp > 0,
       );
+      const requestedTargetId = String(body.targetId ?? "");
+      let target =
+        enemyCandidates.find((player) => player.id === requestedTargetId) ??
+        enemyCandidates[0];
       let amount = 0;
       let message = "";
+      const beforeEnemyHp = new Map(
+        enemyCandidates.map((player) => [player.id, player.hp]),
+      );
 
-      if (actionId === "mend" || actionId === "guard") {
-        target = active;
-      }
-      if (!target) {
-        return Response.json(
-          { error: "有効な対象を選んでください。" },
-          { status: 400 },
-        );
-      }
+      if (selectedSkill?.mpCost) active.mp -= selectedSkill.mpCost;
+      if (selectedSkill?.hpCost) active.hp -= selectedSkill.hpCost;
 
       if (actionId === "mend") {
-        const weapon = weaponById(active.weapon_id) ?? WEAPONS[0];
-        const heal = 22 + (weapon.healingBonus ?? 0);
+        target = active;
         const previousHp = active.hp;
-        active.hp = Math.min(active.max_hp, active.hp + heal);
+        active.hp = Math.min(
+          active.max_hp,
+          active.hp + 22 + (weapon.healingBonus ?? 0),
+        );
         amount = active.hp - previousHp;
         message = `${active.name}は治癒の祈りでHPを${amount}回復した`;
       } else if (actionId === "guard") {
+        target = active;
         const previousBarrier = active.barrier;
         active.barrier = Math.min(36, active.barrier + 18);
         amount = active.barrier - previousBarrier;
         message = `${active.name}は堅守の構えで${amount}の防壁を得た`;
+      } else if (actionId === "death_scythe") {
+        target = enemyCandidates[randomIndex(enemyCandidates.length)];
+        const resultDamage = damagePlayer(target, 999);
+        amount = resultDamage.dealt;
+        message = `${active.name}はHP80とMP250を捧げ死神を召喚。${target.name}に${amount}ダメージ`;
+        if (resultDamage.absorbed) {
+          message += `（防壁が${resultDamage.absorbed}吸収）`;
+        }
+      } else if (actionId === "drain") {
+        if (!target) {
+          return Response.json(
+            { error: "有効な敵を選んでください。" },
+            { status: 400 },
+          );
+        }
+        const stolenHp = Math.min(10, target.hp);
+        const stolenMp = Math.min(15, target.mp);
+        target.hp -= stolenHp;
+        target.mp -= stolenMp;
+        active.hp = Math.min(active.max_hp, active.hp + stolenHp);
+        active.mp = Math.min(active.max_mp, active.mp + stolenMp);
+        amount = stolenHp;
+        message = `${active.name}は${target.name}からHP${stolenHp}・MP${stolenMp}を吸引した`;
+      } else if (actionId === "thief_life") {
+        const stealableItems = target?.itemList.filter((itemId) => {
+          const item = itemById(itemId);
+          return (
+            item &&
+            (!item.maxCopies ||
+              countItem(active.itemList, itemId) < item.maxCopies)
+          );
+        });
+        if (!target || !stealableItems?.length) {
+          return Response.json(
+            { error: "その敵は今の枠へ奪えるアイテムを持っていません。" },
+            { status: 400 },
+          );
+        }
+        if (active.itemList.length >= ITEM_LIMIT) {
+          return Response.json(
+            { error: "アイテム枠に空きがありません。" },
+            { status: 400 },
+          );
+        }
+        const stolenId = stealableItems[randomIndex(stealableItems.length)];
+        target.itemList.splice(target.itemList.indexOf(stolenId), 1);
+        active.itemList.push(stolenId);
+        message = `${active.name}は${target.name}から「${itemById(stolenId)?.name ?? "アイテム"}」を奪った`;
+      } else if (actionId === "ruby_crystal") {
+        target =
+          allyCandidates.find((player) => player.id === requestedTargetId) ??
+          active;
+        const previousHp = target.hp;
+        target.hp = Math.min(target.max_hp, target.hp + 30);
+        amount = target.hp - previousHp;
+        message = `${active.name}はルビーの結晶を使い、${target.name}のHPを${amount}回復した`;
+      } else if (actionId === "sapphire_crystal") {
+        target =
+          allyCandidates.find((player) => player.id === requestedTargetId) ??
+          active;
+        const previousMp = target.mp;
+        const recovery = Math.floor(target.max_mp * 0.3);
+        target.mp = Math.min(target.max_mp, target.mp + recovery);
+        amount = target.mp - previousMp;
+        message = `${active.name}はサファイアの結晶を使い、${target.name}のMPを${amount}回復した`;
+      } else if (actionId === "snow_white_tear") {
+        if (!target) {
+          return Response.json(
+            { error: "有効な敵を選んでください。" },
+            { status: 400 },
+          );
+        }
+        target.sleep_turns = Math.max(target.sleep_turns, 2);
+        message = `${active.name}は白雪姫の涙を使い、${target.name}を2ターン眠らせた`;
+      } else if (actionId === "heavens_scale") {
+        target = enemyCandidates[randomIndex(enemyCandidates.length)];
+        if (active.mp === target.mp) {
+          message = `天国の天秤は${active.name}と${target.name}のMPが等しいと示した。ダメージはない`;
+        } else {
+          const loser = active.mp < target.mp ? active : target;
+          const resultDamage = damagePlayer(loser, 50);
+          amount = resultDamage.dealt;
+          message = `天国の天秤が${target.name}を選んだ。MPの低い${loser.name}に${amount}ダメージ`;
+        }
       } else {
-        const weapon = weaponById(active.weapon_id) ?? WEAPONS[0];
-        const armor = armorById(target.armor_id) ?? ARMORS[0];
-        const rawDamage =
+        if (!target) {
+          return Response.json(
+            { error: "有効な敵を選んでください。" },
+            { status: 400 },
+          );
+        }
+        let rawDamage =
           actionId === "power_strike" ? weapon.damage + 10 : weapon.damage;
-        const afterArmor = Math.max(1, rawDamage - armor.defense);
-        const absorbed = Math.min(target.barrier, afterArmor);
-        target.barrier -= absorbed;
-        amount = afterArmor - absorbed;
-        target.hp = Math.max(0, target.hp - amount);
+        if (actionId === "golden_arrow") rawDamage = 40;
+        if (isBasic) {
+          rawDamage = Math.floor(
+            rawDamage *
+              1.15 ** countItem(active.itemList, "emerald_crystal"),
+          );
+        }
+        const resultDamage = damagePlayer(target, rawDamage);
+        amount = resultDamage.dealt;
         const actionName =
-          actionId === "power_strike" ? "渾身撃" : `${weapon.name}の攻撃`;
+          actionId === "power_strike"
+            ? "渾身撃"
+            : actionId === "golden_arrow"
+              ? "黄金の光矢"
+              : `${weapon.name}の攻撃`;
         message = `${active.name}の${actionName}。${target.name}に${amount}ダメージ`;
-        if (absorbed > 0) message += `（防壁が${absorbed}吸収）`;
+        if (resultDamage.absorbed) {
+          message += `（防壁が${resultDamage.absorbed}吸収）`;
+        }
       }
 
-      if (selectedSkill) {
+      if (selectedItem) {
+        const itemIndex = active.itemList.indexOf(selectedItem.id);
+        if (itemIndex >= 0) active.itemList.splice(itemIndex, 1);
+      }
+      if (selectedSkill && selectedSkill.cooldown > 0) {
         active.cooldownMap[actionId] = selectedSkill.cooldown;
+      }
+
+      const defeatedByAction = enemyCandidates.filter(
+        (player) => (beforeEnemyHp.get(player.id) ?? 0) > 0 && player.hp <= 0,
+      );
+      if (defeatedByAction.length && active.skillList.includes("cruelty")) {
+        const hpRecovery = Math.floor(active.max_hp * 0.5);
+        const mpRecovery = Math.floor(active.max_mp * 0.5);
+        active.hp = Math.min(active.max_hp, active.hp + hpRecovery);
+        active.mp = Math.min(active.max_mp, active.mp + mpRecovery);
+        message += `。残忍が発動し、HPとMPが50%回復`;
       }
 
       const humansAlive = players.filter(
@@ -590,6 +847,13 @@ export async function POST(request: Request) {
       let nextPlayerId: string | null = null;
       let humanCursor = room.human_cursor;
       let monsterCursor = room.monster_cursor;
+      let nextTurnNumber = room.turn_number + 1;
+      const automaticLogs: {
+        id: string;
+        turn: number;
+        player: BattlePlayer;
+        message: string;
+      }[] = [];
 
       if (!humansAlive.length || !monstersAlive.length) {
         status = "finished";
@@ -597,47 +861,78 @@ export async function POST(request: Request) {
       } else {
         if (active.team === "humans") humanCursor += 1;
         else monsterCursor += 1;
-        const nextTeamPlayers =
-          enemyTeam === "humans" ? humansAlive : monstersAlive;
-        const cursor =
-          enemyTeam === "humans" ? humanCursor : monsterCursor;
-        const nextPlayer = nextTeamPlayers[cursor % nextTeamPlayers.length];
-        nextPlayerId = nextPlayer.id;
-        nextPlayer.cooldownMap = Object.fromEntries(
-          Object.entries(nextPlayer.cooldownMap).map(([id, turns]) => [
-            id,
-            Math.max(0, turns - 1),
-          ]),
-        );
+        let nextTeam: Team = enemyTeam;
+
+        for (let attempts = 0; attempts < players.length * 4; attempts += 1) {
+          const living =
+            nextTeam === "humans" ? humansAlive : monstersAlive;
+          const cursor =
+            nextTeam === "humans" ? humanCursor : monsterCursor;
+          const candidate = living[cursor % living.length];
+          if (candidate.sleep_turns <= 0) {
+            nextPlayerId = candidate.id;
+            cooldownTick(candidate);
+            break;
+          }
+          candidate.sleep_turns -= 1;
+          automaticLogs.push({
+            id: crypto.randomUUID(),
+            turn: nextTurnNumber,
+            player: candidate,
+            message: `${candidate.name}は眠っているためターンをスキップした（残り${candidate.sleep_turns}回）`,
+          });
+          nextTurnNumber += 1;
+          if (nextTeam === "humans") humanCursor += 1;
+          else monsterCursor += 1;
+          nextTeam = nextTeam === "humans" ? "monsters" : "humans";
+        }
       }
 
-      const actionLogId = crypto.randomUUID();
       const statements: D1PreparedStatement[] = [
         db
           .prepare(
             "INSERT INTO actions (id, room_id, turn_number, actor_id, target_id, action_id, amount, message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
           )
           .bind(
-            actionLogId,
+            crypto.randomUUID(),
             room.id,
             room.turn_number,
             active.id,
-            target.id,
+            target?.id ?? active.id,
             actionId,
             amount,
             message,
           ),
       ];
+      for (const log of automaticLogs) {
+        statements.push(
+          db
+            .prepare(
+              "INSERT INTO actions (id, room_id, turn_number, actor_id, target_id, action_id, amount, message) VALUES (?, ?, ?, ?, ?, 'sleep_skip', 0, ?)",
+            )
+            .bind(
+              log.id,
+              room.id,
+              log.turn,
+              log.player.id,
+              log.player.id,
+              log.message,
+            ),
+        );
+      }
       for (const player of players) {
         statements.push(
           db
             .prepare(
-              "UPDATE players SET hp = ?, barrier = ?, cooldowns = ? WHERE id = ?",
+              "UPDATE players SET hp = ?, mp = ?, barrier = ?, item_ids = ?, cooldowns = ?, sleep_turns = ? WHERE id = ?",
             )
             .bind(
               player.hp,
+              player.mp,
               player.barrier,
+              JSON.stringify(player.itemList),
               JSON.stringify(player.cooldownMap),
+              player.sleep_turns,
               player.id,
             ),
         );
@@ -650,7 +945,7 @@ export async function POST(request: Request) {
           .bind(
             status,
             nextPlayerId,
-            room.turn_number + 1,
+            nextTurnNumber,
             winner,
             humanCursor,
             monsterCursor,
@@ -668,4 +963,3 @@ export async function POST(request: Request) {
     return errorResponse(error);
   }
 }
-

@@ -38,11 +38,15 @@ export const players = sqliteTable(
     team: text("team").notNull(),
     hp: integer("hp").notNull().default(100),
     maxHp: integer("max_hp").notNull().default(100),
+    mp: integer("mp").notNull().default(100),
+    maxMp: integer("max_mp").notNull().default(100),
     barrier: integer("barrier").notNull().default(0),
     weaponId: text("weapon_id").notNull().default("longsword"),
     armorId: text("armor_id").notNull().default("chainmail"),
     skillIds: text("skill_ids").notNull().default('["guard","mend"]'),
+    itemIds: text("item_ids").notNull().default("[]"),
     cooldowns: text("cooldowns").notNull().default("{}"),
+    sleepTurns: integer("sleep_turns").notNull().default(0),
     ready: integer("ready").notNull().default(0),
     joinedAt: text("joined_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
@@ -72,4 +76,3 @@ export const actions = sqliteTable(
     index("actions_room_idx").on(table.roomId, table.turnNumber),
   ],
 );
-
