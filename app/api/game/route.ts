@@ -44,6 +44,7 @@ type PlayerRow = {
   armor_id: string;
   skill_ids: string;
   item_ids: string;
+  loadout_item_ids: string;
   cooldowns: string;
   sleep_turns: number;
   ready: number;
@@ -107,6 +108,7 @@ async function ensureSchema(db: D1Database) {
         armor_id TEXT NOT NULL DEFAULT 'chainmail',
         skill_ids TEXT NOT NULL DEFAULT '["guard","mend"]',
         item_ids TEXT NOT NULL DEFAULT '[]',
+        loadout_item_ids TEXT NOT NULL DEFAULT '[]',
         cooldowns TEXT NOT NULL DEFAULT '{}',
         sleep_turns INTEGER NOT NULL DEFAULT 0,
         ready INTEGER NOT NULL DEFAULT 0,
@@ -145,11 +147,19 @@ async function ensureSchema(db: D1Database) {
     ["mp", "INTEGER NOT NULL DEFAULT 100"],
     ["max_mp", "INTEGER NOT NULL DEFAULT 100"],
     ["item_ids", "TEXT NOT NULL DEFAULT '[]'"],
+    ["loadout_item_ids", "TEXT NOT NULL DEFAULT '[]'"],
     ["sleep_turns", "INTEGER NOT NULL DEFAULT 0"],
   ] as const;
   for (const [name, definition] of additions) {
     if (!columns.has(name)) {
       await db.prepare(`ALTER TABLE players ADD COLUMN ${name} ${definition}`).run();
+      if (name === "loadout_item_ids") {
+        await db
+          .prepare(
+            "UPDATE players SET loadout_item_ids = item_ids WHERE item_ids != '[]'",
+          )
+          .run();
+      }
     }
   }
 }
@@ -504,6 +514,10 @@ export async function POST(request: Request) {
         !armor ||
         skillIds.length > SKILL_LIMIT ||
         skillIds.some((id) => !skillById(id)) ||
+        skillIds.some((id) => {
+          const requiredType = skillById(id)?.requiredWeaponType;
+          return requiredType && requiredType !== weapon.type;
+        }) ||
         !validateItems(itemIds)
       ) {
         return Response.json(
@@ -516,12 +530,13 @@ export async function POST(request: Request) {
       const maxMp = weapon.type === "staff" ? STAFF_MAX_MP : BASE_MAX_MP;
       await db
         .prepare(
-          "UPDATE players SET weapon_id = ?, armor_id = ?, skill_ids = ?, item_ids = ?, mp = ?, max_mp = ?, ready = 1 WHERE id = ?",
+          "UPDATE players SET weapon_id = ?, armor_id = ?, skill_ids = ?, item_ids = ?, loadout_item_ids = ?, mp = ?, max_mp = ?, ready = 1 WHERE id = ?",
         )
         .bind(
           weaponId,
           armorId,
           JSON.stringify(skillIds),
+          JSON.stringify(itemIds),
           JSON.stringify(itemIds),
           maxMp,
           maxMp,
@@ -581,6 +596,67 @@ export async function POST(request: Request) {
         db
           .prepare(
             "UPDATE rooms SET status = 'battle', current_player_id = ?, turn_number = 1, winner_team = NULL, human_cursor = 0, monster_cursor = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+          )
+          .bind(humans[0].id, room.id),
+      );
+      await db.batch(statements);
+      return Response.json({ room: await getRoomState(db, code) });
+    }
+
+    if (operation === "rematch") {
+      if (actor.id !== room.host_player_id) {
+        return Response.json(
+          { error: "再戦を開始できるのは部屋主だけです。" },
+          { status: 403 },
+        );
+      }
+      if (room.status !== "finished") {
+        return Response.json(
+          { error: "試合終了後に再戦できます。" },
+          { status: 409 },
+        );
+      }
+      const result = await db
+        .prepare(
+          "SELECT * FROM players WHERE room_id = ? ORDER BY joined_at ASC, id ASC",
+        )
+        .bind(room.id)
+        .all<PlayerRow>();
+      const humans = result.results.filter((player) => player.team === "humans");
+      const monsters = result.results.filter(
+        (player) => player.team === "monsters",
+      );
+      if (!humans.length || !monsters.length) {
+        return Response.json(
+          { error: "両方の陣営に1人以上必要です。" },
+          { status: 400 },
+        );
+      }
+
+      const statements: D1PreparedStatement[] = [
+        db.prepare("DELETE FROM actions WHERE room_id = ?").bind(room.id),
+      ];
+      for (const player of result.results) {
+        const maxMp =
+          weaponById(player.weapon_id)?.type === "staff"
+            ? STAFF_MAX_MP
+            : BASE_MAX_MP;
+        const savedItems = parseJson<string[]>(
+          player.loadout_item_ids,
+          parseJson<string[]>(player.item_ids, []),
+        );
+        statements.push(
+          db
+            .prepare(
+              "UPDATE players SET hp = max_hp, mp = ?, max_mp = ?, barrier = 0, item_ids = ?, cooldowns = '{}', sleep_turns = 0, ready = 1 WHERE id = ?",
+            )
+            .bind(maxMp, maxMp, JSON.stringify(savedItems), player.id),
+        );
+      }
+      statements.push(
+        db
+          .prepare(
+            "UPDATE rooms SET status = 'battle', current_player_id = ?, turn_number = 1, winner_team = NULL, human_cursor = 0, monster_cursor = 0, version = version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
           )
           .bind(humans[0].id, room.id),
       );

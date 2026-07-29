@@ -45,6 +45,7 @@ export const players = sqliteTable(
     armorId: text("armor_id").notNull().default("chainmail"),
     skillIds: text("skill_ids").notNull().default('["guard","mend"]'),
     itemIds: text("item_ids").notNull().default("[]"),
+    loadoutItemIds: text("loadout_item_ids").notNull().default("[]"),
     cooldowns: text("cooldowns").notNull().default("{}"),
     sleepTurns: integer("sleep_turns").notNull().default(0),
     ready: integer("ready").notNull().default(0),

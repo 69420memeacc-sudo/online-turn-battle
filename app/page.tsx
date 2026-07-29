@@ -257,6 +257,11 @@ export default function Home() {
     if (auth) void requestGame(auth);
   }
 
+  function rematch() {
+    const auth = authenticatedBody("rematch");
+    if (auth) void requestGame(auth);
+  }
+
   function act(actionId: string, targetId = selectedEnemyTargetId) {
     const auth = authenticatedBody("act");
     if (!auth) return;
@@ -264,6 +269,17 @@ export default function Home() {
   }
 
   function toggleSkill(skillId: string) {
+    const skill = skillById(skillId);
+    const weapon = weaponById(weaponId);
+    if (
+      skill?.requiredWeaponType &&
+      weapon?.type !== skill.requiredWeaponType
+    ) {
+      const requiredWeapon =
+        skill.requiredWeaponType === "bow" ? "弓" : "杖";
+      setError(`${skill.name}を装備するには${requiredWeapon}武器が必要です。`);
+      return;
+    }
     setSkillIds((current) => {
       if (current.includes(skillId)) {
         return current.filter((id) => id !== skillId);
@@ -274,6 +290,30 @@ export default function Home() {
       }
       return [...current, skillId];
     });
+  }
+
+  function selectWeapon(nextWeaponId: string) {
+    const nextWeapon = weaponById(nextWeaponId);
+    if (!nextWeapon) return;
+    const incompatible = skillIds
+      .map(skillById)
+      .filter(
+        (skill) =>
+          skill?.requiredWeaponType &&
+          skill.requiredWeaponType !== nextWeapon.type,
+      );
+    setWeaponId(nextWeaponId);
+    if (incompatible.length) {
+      setSkillIds((current) =>
+        current.filter(
+          (id) =>
+            !incompatible.some((skill) => skill?.id === id),
+        ),
+      );
+      setError(
+        `${incompatible.map((skill) => skill!.name).join("・")}は${nextWeapon.name}では使えないため、技枠から外しました。`,
+      );
+    }
   }
 
   function addItem(itemId: string) {
@@ -496,7 +536,7 @@ export default function Home() {
                           ? "item-card selected"
                           : "item-card"
                       }
-                      onClick={() => setWeaponId(weapon.id)}
+                      onClick={() => selectWeapon(weapon.id)}
                     >
                       <span className="item-icon">{weapon.icon}</span>
                       <span className="item-copy">
@@ -943,7 +983,16 @@ export default function Home() {
                 <small>VICTORY</small>
                 <strong>{teamLabel(room.winnerTeam!)}</strong>
               </div>
-              <button onClick={leaveRoom}>タイトルへ戻る</button>
+              <div className="victory-actions">
+                {room.hostPlayerId === session?.playerId ? (
+                  <button onClick={rematch} disabled={busy}>
+                    {busy ? "戦場を整えています…" : "同じ編成で再戦"}
+                  </button>
+                ) : (
+                  <small>部屋主の再戦を待っています</small>
+                )}
+                <button onClick={leaveRoom}>タイトルへ戻る</button>
+              </div>
             </div>
           ) : null}
         </section>

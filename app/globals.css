@@ -1287,6 +1287,28 @@ select:focus-visible {
   font-size: 10px;
 }
 
+.victory-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.victory-actions button {
+  margin-left: 0;
+}
+
+.victory-actions small {
+  color: #8e8b83;
+  font-size: 9px;
+}
+
+.victory-actions button:first-child {
+  border-color: rgba(199, 166, 100, 0.62);
+  background: rgba(116, 91, 40, 0.26);
+  color: var(--gold-bright);
+}
+
 footer {
   display: flex;
   height: 56px;
@@ -1404,6 +1426,16 @@ footer {
 
   .action-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .victory-banner {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .victory-actions {
+    width: 100%;
+    margin-left: 0;
   }
 
   .action-topline {
